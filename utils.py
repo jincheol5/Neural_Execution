@@ -3,8 +3,11 @@ import networkx as nx
 import pickle
 import random
 import copy
+import torch
+from torch_geometric.data import Data
 
-class DataGenerator:
+
+class Data_Generator:
     def __init__(self):
         pass
 
@@ -28,43 +31,60 @@ class DataGenerator:
             graph=self.set_self_loop(graph=graph)
             graph=self.set_edge_weight(graph=graph)
             for node_idx in graph.nodes():
-                graph.nodes[node_idx]['bfs']=0.0
+                graph.nodes[node_idx]['feature']=0.0
             graph_list.append(graph)
 
         return graph_list
 
-class DataLoader:
-    def __init__(self):
-        self.file_path=os.path.join(os.getcwd(),'data')
 
-    def save_data(self,data,file_name):
+class Data_Loader:
+    def __init__(self):
+        self.pickle_path=os.path.join(os.getcwd(),'data')
+        self.dataset_path=os.path.join("..","data")
+
+    def save_pickle(self,data,file_name):
         file_name=file_name+".pkl"
-        with open(os.path.join(self.file_path,file_name),'wb') as f:
+        with open(os.path.join(self.pickle_path,file_name),'wb') as f:
             pickle.dump(data,f)
         print("Save "+file_name)
 
-    def load_data(self,file_name):
+    def load_pickle(self,file_name):
         file_name=file_name+".pkl"
-        with open(os.path.join(self.file_path,file_name),'rb') as f:
+        with open(os.path.join(self.pickle_path,file_name),'rb') as f:
             data=pickle.load(f)
         print("Load "+file_name)
         return data
 
-class DataProcessor:
+class Data_Processor:
     def __init__(self):
         pass
     
-    def compute_bfs_step(self,graph,init=False,source_index=0):
+    def compute_bfs_step(self,graph,init=False,source_id=0):
         copy_graph=copy.deepcopy(graph)
+        x_t=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # (num_nodes,1)
+        for node_idx in graph.nodes():
+            x_t[node_idx][0]=graph.nodes[node_idx]['feature']
 
         if init:
-            copy_graph.nodes[source_index]['bfs']=1.0
-            return copy_graph
+            copy_graph.nodes[source_id]['feature']=1.0
+            x_t[source_id][0]=1.0
+            return copy_graph, x_t
 
         for node_idx in graph.nodes():
-            if graph.nodes[node_idx]['bfs'] == 1.0:
+            if graph.nodes[node_idx]['feature'] == 1.0:
                 for neighbor in graph.neighbors(node_idx):
-                    if graph.nodes[neighbor]['bfs'] == 0.0:
-                        copy_graph.nodes[neighbor]['bfs'] = 1.0
+                    if graph.nodes[neighbor]['feature'] == 0.0:
+                        copy_graph.nodes[neighbor]['feature'] = 1.0
+                        x_t[neighbor][0]=1.0
 
-        return copy_graph
+        return copy_graph, x_t
+
+    def compute_reachability(self,graph,source_id):
+        nodes=list(graph.nodes())
+        result_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # (num_nodes,1)
+
+        for tar in nodes:
+            if nx.has_path(graph,source=source_id,target=tar):
+                result_tensor[tar][0]=1.0
+
+        return result_tensor
