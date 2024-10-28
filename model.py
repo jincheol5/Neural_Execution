@@ -36,7 +36,7 @@ class BFS_Terminator(torch.nn.Module):
 class MPNN_Processor(MessagePassing):
     def __init__(self,hidden_dim):
         super().__init__(aggr="max")
-        self.M=nn.Linaer(hidden_dim+hidden_dim+1,hidden_dim)
+        self.M=nn.Linear(hidden_dim+hidden_dim+1,hidden_dim)
         self.U=nn.Linear(hidden_dim+hidden_dim,hidden_dim)
         self.relu=nn.ReLU()
 
