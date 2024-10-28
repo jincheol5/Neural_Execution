@@ -46,8 +46,8 @@ class MPNN_Processor(MessagePassing):
         # propagate()에 처음 전달된 모든 인수를 취할 수 있다
         # z_i,z_j는 propagate() 에서 자동으로 매핑하여 전달
         # z_i,z_j=(num_edges,hidden_dim)
-        # edge_attr=(num_edges) -> (num_edges,1)로 변환 필요
-        m=self.M(torch.cat([z_i,z_j,edge_attr.unsqueeze(-1)],dim=-1))
+        # edge_attr=(num_edges,1)
+        m=self.M(torch.cat([z_i,z_j,edge_attr],dim=-1))
         return self.relu(m)
 
     def update(self,aggr_out,z):

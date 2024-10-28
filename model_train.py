@@ -44,13 +44,9 @@ class Model_Trainer:
                 data=from_networkx(train_graph) # nx graph to pyg Data
                 num_nodes=data.x.size(0)
                 edge_index=data.edge_index
-                edge_attr=data.edge_attr
+                edge_attr=data.edge_attr.unsqueeze(-1)
                 edge_index=edge_index.to(device)
                 edge_attr=edge_attr.to(device)
-
-                assert data.x is not None, "data.x가 None입니다. 그래프에 노드 특성이 없는지 확인하세요."
-                assert edge_index.device == edge_attr.device, "edge_index와 edge_attr는 동일한 장치에 있어야 합니다."
-
 
                 source_id=random.randint(0, num_nodes - 1)
 
