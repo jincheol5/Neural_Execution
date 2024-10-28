@@ -61,23 +61,23 @@ class Data_Processor:
     
     def compute_bfs_step(self,graph,init=False,source_id=0):
         copy_graph=copy.deepcopy(graph)
-        x_t=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # (num_nodes,1)
+        step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # (num_nodes,1)
         for node_idx in graph.nodes():
-            x_t[node_idx][0]=graph.nodes[node_idx]['feature']
+            step_x_label[node_idx][0]=graph.nodes[node_idx]['feature']
 
         if init:
             copy_graph.nodes[source_id]['feature']=1.0
-            x_t[source_id][0]=1.0
-            return copy_graph, x_t
+            step_x_label[source_id][0]=1.0
+            return copy_graph, step_x_label
 
         for node_idx in graph.nodes():
             if graph.nodes[node_idx]['feature'] == 1.0:
                 for neighbor in graph.neighbors(node_idx):
                     if graph.nodes[neighbor]['feature'] == 0.0:
                         copy_graph.nodes[neighbor]['feature'] = 1.0
-                        x_t[neighbor][0]=1.0
+                        step_x_label[neighbor][0]=1.0
 
-        return copy_graph, x_t
+        return copy_graph, step_x_label
 
     def compute_reachability(self,graph,source_id):
         nodes=list(graph.nodes())

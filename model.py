@@ -16,22 +16,22 @@ class BFS_Decoder(torch.nn.Module):
     def __init__(self,hidden_dim):
         super().__init__()
         self.linear=nn.Linear(hidden_dim+hidden_dim,1)
+        self.sigmoid=torch.nn.Sigmoid()
 
     def forward(self, z, h):
-        return self.linear(torch.cat([z,h],dim=-1))
+        output=self.linear(torch.cat([z,h],dim=-1))
+        return self.sigmoid(output)
 
 class BFS_Terminator(torch.nn.Module):
     def __init__(self, hidden_dim):
         super().__init__()
         self.linear=nn.Linear(hidden_dim+hidden_dim, 1)
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, h):
         h_mean=torch.mean(h,dim=0)
         output=self.linear(torch.cat([h,h_mean],dim=-1))
         output_mean=output.mean() # output_mean=(1,1)
-        tau=self.sigmoid(output) # tau=(1,1)
-        return tau.item() # 단일 실수 값으로 반환 
+        return output_mean
 
 class MPNN_Processor(MessagePassing):
     def __init__(self,hidden_dim):
@@ -74,10 +74,10 @@ class BFS_Neural_Execution(torch.nn.Module):
         z=self.encoder(x=x,h=pre_h)
         h=self.processor(z=z,edge_index=edge_index,edge_attr=edge_attr)
         y=self.decoder(z=z,h=h)
-        tau=self.terminator(h=h)
+        ter=self.terminator(h=h)
 
-        output['h']=h
-        output['y']=y
-        output['tau']=tau
+        output['h']=h # (num_nodes,hidden_dim)
+        output['y']=y # (num_nodes,1)
+        output['ter']=ter # (1,1)
 
         return output
