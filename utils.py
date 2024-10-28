@@ -18,7 +18,7 @@ class Data_Generator:
 
     def set_edge_weight(self,graph):
         for source,target in graph.edges(): 
-            graph[source][target]['weight'] = random.uniform(0.2, 1) 
+            graph[source][target]['edge_attr'] = random.uniform(0.2, 1) 
         return graph
 
     def generate_graph_list(self,num_graph,num_node):
@@ -31,7 +31,7 @@ class Data_Generator:
             graph=self.set_self_loop(graph=graph)
             graph=self.set_edge_weight(graph=graph)
             for node_idx in graph.nodes():
-                graph.nodes[node_idx]['feature']=[0.0]
+                graph.nodes[node_idx]['x']=[0.0]
             graph_list.append(graph)
 
         return graph_list
@@ -63,18 +63,18 @@ class Data_Processor:
         copy_graph=copy.deepcopy(graph)
         step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # (num_nodes,1)
         for node_idx in graph.nodes():
-            step_x_label[node_idx][0]=graph.nodes[node_idx]['feature']
+            step_x_label[node_idx][0]=graph.nodes[node_idx]['x']
 
         if init:
-            copy_graph.nodes[source_id]['feature']=1.0
+            copy_graph.nodes[source_id]['x']=1.0
             step_x_label[source_id][0]=1.0
             return copy_graph, step_x_label
 
         for node_idx in graph.nodes():
-            if graph.nodes[node_idx]['feature'] == 1.0:
+            if graph.nodes[node_idx]['x'] == 1.0:
                 for neighbor in graph.neighbors(node_idx):
-                    if graph.nodes[neighbor]['feature'] == 0.0:
-                        copy_graph.nodes[neighbor]['feature'] = 1.0
+                    if graph.nodes[neighbor]['x'] == 0.0:
+                        copy_graph.nodes[neighbor]['x'] = 1.0
                         step_x_label[neighbor][0]=1.0
 
         return copy_graph, step_x_label
