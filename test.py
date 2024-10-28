@@ -7,4 +7,4 @@ index = torch.tensor([0, 1, 2], device='cuda')
 
 # scatter 연산 테스트
 result = torch_scatter.scatter_add(x, index, dim=0, dim_size=3)
-print(result)
+print(result.device)
