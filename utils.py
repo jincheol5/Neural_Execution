@@ -31,7 +31,7 @@ class Data_Generator:
             graph=self.set_self_loop(graph=graph)
             graph=self.set_edge_weight(graph=graph)
             for node_idx in graph.nodes():
-                graph.nodes[node_idx]['feature']=0.0
+                graph.nodes[node_idx]['feature']=[0.0]
             graph_list.append(graph)
 
         return graph_list
