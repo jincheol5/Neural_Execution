@@ -61,7 +61,7 @@ class MPNN_Processor(MessagePassing):
         # 1. message()
         # 2. aggregate() => aggr 함수 수행 (e.g., max)
         # 3. update()
-        return self.propagate(edge_index,z=z,edge_attr=edge_attr)
+        return self.propagate(edge_index=edge_index,z=z,edge_attr=edge_attr)
 
 class BFS_Neural_Execution(torch.nn.Module):
     def __init__(self, hidden_dim):

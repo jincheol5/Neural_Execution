@@ -48,6 +48,10 @@ class Model_Trainer:
                 edge_index=edge_index.to(device)
                 edge_attr=edge_attr.to(device)
 
+                assert data.x is not None, "data.x가 None입니다. 그래프에 노드 특성이 없는지 확인하세요."
+                assert edge_index.device == edge_attr.device, "edge_index와 edge_attr는 동일한 장치에 있어야 합니다."
+
+
                 source_id=random.randint(0, num_nodes - 1)
 
                 # initialize h
@@ -57,7 +61,7 @@ class Model_Trainer:
 
                 # for termination
                 last_x_label=self.dp.compute_reachability(graph=train_graph,source_id=source_id)
-                last_x_label.to(device)
+                last_x_label=last_x_label.to(device)
 
                 # initialize step
                 step_graph,x_0=self.dp.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
@@ -89,7 +93,7 @@ class Model_Trainer:
                     optimizer.step()
 
                     # 마지막 step인 경우 종료
-                    if ter_std.cpu().item()==0.0:
+                    if float(ter_std)==0.0:
                         break
 
                     # Noisy Teacher Forcing
@@ -133,13 +137,13 @@ class Model_Trainer:
 
                 # for termination
                 last_x_label=self.dp.compute_reachability(graph=test_graph,source_id=source_id)
-                last_x_label.to(device)
+                last_x_label=last_x_label.to(device)
 
                 # initialize step
                 step_graph,x_0=self.dp.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
                 x=x_0.to(device) # x=(num_nodes,1)
 
-                last_y=None
+                last_y=torch.zeros_like(x, device=device)
                 t=0
                 while t < num_nodes:
                     step_graph,step_x_label=self.dp.compute_bfs_step(graph=step_graph,source_id=source_id)
@@ -163,8 +167,8 @@ class Model_Trainer:
                     last_y=cls_y
 
                     # terminate
-                    tau=torch.nn.Sigmoid(ter).to(device)
-                    if tau.cpu().item()<=0.5:
+                    tau=torch.nn.Sigmoid(ter)
+                    if tau.item()<=0.5:
                         break
                     t+=1
                 
