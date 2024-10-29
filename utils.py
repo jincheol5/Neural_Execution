@@ -18,7 +18,7 @@ class Data_Generator:
 
     def set_edge_weight(self,graph):
         for source,target in graph.edges(): 
-            graph[source][target]['edge_attr'] = random.uniform(0.2, 1) 
+            graph[source][target]['edge_attr'] = [random.uniform(0.2, 1)] 
         return graph
 
     def generate_graph_list(self,num_graph,num_node):

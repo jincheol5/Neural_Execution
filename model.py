@@ -28,9 +28,12 @@ class BFS_Terminator(torch.nn.Module):
         self.linear=nn.Linear(hidden_dim+hidden_dim, 1)
 
     def forward(self, h):
-        h_mean=torch.mean(h,dim=0)
-        output=self.linear(torch.cat([h,h_mean],dim=-1))
-        output_mean=output.mean() # output_mean=(1,1)
+        num_nodes=h.size(0)
+        h_mean=torch.mean(h,dim=0) # (hidden_feature,)
+        h_mean=h_mean.unsqueeze(0) # (1,hidden_feature)
+        h_mean=h_mean.expand(num_nodes,-1) # (num_nodes,hidden_feature)
+        output=self.linear(torch.cat([h,h_mean],dim=-1)) # (num_nodes,1)
+        output_mean = torch.mean(output, dim=0, keepdim=True)  # (1, 1)  
         return output_mean
 
 class MPNN_Processor(MessagePassing):
@@ -61,7 +64,7 @@ class MPNN_Processor(MessagePassing):
         # 1. message()
         # 2. aggregate() => aggr 함수 수행 (e.g., max)
         # 3. update()
-        
+
         return self.propagate(edge_index=edge_index,z=z,edge_attr=edge_attr)
 
 class BFS_Neural_Execution(torch.nn.Module):
