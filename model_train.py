@@ -174,5 +174,5 @@ class Model_Trainer:
         k=0
         for acc_dict in acc_dict_list:
             k+=1
-            print(k," test graph step_acc_avg: ",acc_dict['step_acc_avg']," and last_acc: ",acc_dict['last_acc'])
+            print(f"{k} test graph step_acc_avg: {acc_dict['step_acc_avg']:.2%} and last_acc: {acc_dict['last_acc']:.2%}")
             print()
