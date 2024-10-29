@@ -52,9 +52,6 @@ class MPNN_Processor(MessagePassing):
         # z_i,z_j는 propagate() 에서 자동으로 매핑하여 전달
         # z_i,z_j=(num_edges,hidden_dim)
         # edge_attr=(num_edges,1)
-        print("mpnn z_i: ",z_i.device)
-        print("mpnn z_j: ",z_j.device)
-        print("mpnn edge_attr: ",edge_attr.device)
         m=self.M(torch.cat([z_i,z_j,edge_attr],dim=-1))
         return self.relu(m)
 
