@@ -41,7 +41,6 @@ class Data_Generator:
         graph.add_edges_from([(0,2), (0,3),(2,1),(3,4)])
         graph=self.set_self_loop(graph=graph)
         graph=self.set_edge_weight(graph=graph)
-        
         return graph
 
 

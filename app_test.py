@@ -2,7 +2,7 @@ import os
 import random
 import numpy as np
 import torch
-from utils import Data_Loader
+from utils import Data_Loader,Data_Generator
 from model import BFS_Neural_Execution
 from model_train import Model_Trainer
 
@@ -20,11 +20,12 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 dl=Data_Loader()
+dg=Data_Generator()
 model=BFS_Neural_Execution(hidden_dim=32)
 model_trainer=Model_Trainer(model=model)
 
 train_graph_list=dl.load_pickle(file_name="train_graph_list")
-test_graph=dl.load_pickle(file_name="test_graph")
+test_graph=dg.generate_test_graph()
 
 model_trainer.train_bfs(train_graph_list=train_graph_list,hidden_dim=32)
 model_trainer.test_bfs_one(test_graph=test_graph,hidden_dim=32)
