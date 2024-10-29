@@ -38,7 +38,7 @@ class Model_Trainer:
         criterion = BCEWithLogitsLoss()
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.to(device)
-        print("edge_index: ",self.model.device)
+        print("edge_index: ",next(self.model.parameters()).device)
         self.model.train()
 
         for epoch in tqdm(range(epochs),desc="Training..."):
