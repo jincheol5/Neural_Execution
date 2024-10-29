@@ -46,28 +46,28 @@ class Model_Trainer:
                 num_nodes=data.x.size(0)
                 edge_index=data.edge_index.to(device)
                 edge_attr=data.edge_attr.to(device)
-                print("edge_index: ",edge_index.device())
-                print("edge_attr: ",edge_attr.device())
+                print("edge_index: ",edge_index.device)
+                print("edge_attr: ",edge_attr.device)
 
                 source_id=random.randint(0, num_nodes - 1)
 
                 # initialize h
                 h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).detach().to(device) # h=(num_nodes,hidden_dim)
-                print("h: ",h.device())
+                print("h: ",h.device)
                 # for termination
                 last_x_label=self.dp.compute_reachability(graph=train_graph,source_id=source_id).to(device)
-                print("last_x_label: ",last_x_label.device())
+                print("last_x_label: ",last_x_label.device)
                 # initialize step
                 graph_0,x_0=self.dp.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
                 x=x_0.detach().to(device) # x=(num_nodes,1)
-                print("x: ",x.device())
+                print("x: ",x.device)
                 graph_t=graph_0
 
                 t=1
                 while t <= num_nodes:
                     graph_t,x_t=self.dp.compute_bfs_step(graph=graph_t,source_id=source_id)
                     x_t=x_t.to(device)
-                    print("x_t: ",x_t.device())
+                    print("x_t: ",x_t.device)
                     optimizer.zero_grad()
 
                     # get model output
