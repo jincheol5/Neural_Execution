@@ -35,6 +35,14 @@ class Data_Generator:
             graph_list.append(graph)
 
         return graph_list
+    
+    def generate_test_graph(self):
+        graph=nx.Graph() # undirected graph 
+        graph.add_edges_from([(0,2), (0,3),(2,1),(3,4)])
+        graph=self.set_self_loop(graph=graph)
+        graph=self.set_edge_weight(graph=graph)
+        
+        return graph
 
 
 class Data_Loader:

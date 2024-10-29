@@ -176,3 +176,70 @@ class Model_Trainer:
             k+=1
             print(f"{k} test graph step_acc_avg: {acc_dict['step_acc_avg']:.2%} and last_acc: {acc_dict['last_acc']:.2%}")
             print()
+
+    def test_bfs_one(self,test_graph,hidden_dim=32):
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model.to(device)
+        self.model.eval()
+
+        with torch.no_grad():
+            step_acc_list=[]
+
+            data=from_networkx(test_graph) # nx graph to pyg Data
+            num_nodes=data.x.size(0)
+            edge_index=data.edge_index.to(device)
+            edge_attr=data.edge_attr.to(device)
+
+            source_id=random.randint(0, num_nodes - 1)
+
+            # initialize h
+            h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).to(device) # h=(num_nodes,hidden_dim)
+
+            # for termination
+            last_x_label=self.dp.compute_reachability(graph=test_graph,source_id=source_id)
+            last_x_label=last_x_label.to(device)
+
+            # initialize step
+            graph_0,x_0=self.dp.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
+            x=x_0.to(device) # x=(num_nodes,1)
+            graph_t=graph_0
+
+            last_y=torch.zeros_like(x).to(device)
+            t=1
+            while t <= num_nodes:
+                graph_t,x_t=self.dp.compute_bfs_step(graph=graph_t,source_id=source_id)
+                x_t=x_t.to(device)
+
+                # get model output
+                output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                # get and set h
+                h=output['h'] # h=(num_nodes,hidden_dim)
+                # get y, ter
+                y=output['y'] # y=(num_nodes,1)
+                cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
+                ter=output['ter'] # ter=(1,1)
+                
+                # compute step accuracy
+                step_acc=self.compute_accuracy(y=cls_y,label=x_t)
+                step_acc_list.append(step_acc)
+
+                # set x to cls_y and last_y to cls_y
+                x=cls_y
+                last_y=cls_y
+
+                # print step prediction
+                print(f"{t} step prediction: {cls_y.cpu()}")
+                print()
+
+                # terminate
+                tau=F.sigmoid(ter)
+                if tau.item()<=0.5:
+                    break
+                t+=1
+
+            # compute step acc and last acc
+            step_acc_avg=np.mean(step_acc_list)
+            last_acc=self.compute_accuracy(y=last_y,label=last_x_label)
+
+            print(f"test graph step_acc_avg: {step_acc_avg:.2%} and last_acc: {last_acc:.2%}")
+
