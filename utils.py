@@ -21,6 +21,22 @@ class Data_Generator:
             graph[source][target]['edge_attr'] = [random.uniform(0.2, 1)] 
         return graph
 
+    def convert_grid_2d_to_int_id(self,graph):
+        # 그래프의 행과 열 크기를 가져옵니다.
+        m = max(x for x, y in graph.nodes()) + 1
+        n = max(y for x, y in graph.nodes()) + 1
+
+        # 노드 좌표를 정수형 ID로 매핑하는 딕셔너리 생성
+        node_mapping = {(i, j): i * n + j for i in range(m) for j in range(n)}
+
+        # 새로운 그래프에 정수형 노드 ID와 엣지를 추가합니다.
+        new_graph = nx.Graph()
+        for (node1, node2) in graph.edges():
+            # 좌표형 ID를 정수형 ID로 변환하여 엣지를 추가
+            new_graph.add_edge(node_mapping[node1], node_mapping[node2])
+
+        return new_graph
+
     def generate_train_graph_list(self,num_graph,num_node):
         train_graph_list=[]
 
@@ -32,7 +48,8 @@ class Data_Generator:
             train_graph_list.append(ladder_graph)
 
             # generate grid 2D graph
-            grid_2d_graph=nx.grid_2d_graph(m=num_node,n=num_node)
+            grid_2d_graph=nx.grid_2d_graph(m=num_node,n=num_node) # node id = (x,y), edge = ((0,0),(0,1)) 형태를 가짐 
+            grid_2d_graph=self.convert_grid_2d_to_int_id(grid_2d_graph)
             train_graph_list.append(grid_2d_graph)
 
             # generate tree graph
