@@ -37,44 +37,43 @@ class Data_Generator:
 
         return new_graph
 
-    def generate_train_graph_list(self,num_graph,num_node):
-        train_graph_list=[]
+    def generate_graph_list(self,num_graph,num_node,edge_probability=0.5):
+        graph_list=[]
 
         # generate
         for _ in range(num_graph):
 
             # generate ladder graph
             ladder_graph=nx.ladder_graph(n=num_node)
-            train_graph_list.append(ladder_graph)
+            graph_list.append(ladder_graph)
 
             # generate grid 2D graph
             grid_2d_graph=nx.grid_2d_graph(m=num_node,n=num_node) # node id = (x,y), edge = ((0,0),(0,1)) 형태를 가짐 
             grid_2d_graph=self.convert_grid_2d_to_int_id(grid_2d_graph)
-            train_graph_list.append(grid_2d_graph)
+            graph_list.append(grid_2d_graph)
 
             # generate tree graph
             tree_graph=nx.random_tree(n=num_node)
-            train_graph_list.append(tree_graph)
+            graph_list.append(tree_graph)
 
             # generate Erdos-Renyi graph
-            edge_probability=0.3
             Erdos_Renyi_graph=nx.erdos_renyi_graph(num_node,edge_probability)
-            train_graph_list.append(Erdos_Renyi_graph)
+            graph_list.append(Erdos_Renyi_graph)
 
             # generate Barabasi-Albert graph
             Barabasi_Albert_graph = nx.barabasi_albert_graph(n=num_node, m=2)
-            train_graph_list.append(Barabasi_Albert_graph)
+            graph_list.append(Barabasi_Albert_graph)
 
 
         # set selp loop, edge weight, node feature
-        for train_graph in train_graph_list:
+        for train_graph in graph_list:
             train_graph=self.set_self_loop(graph=train_graph)
             train_graph=self.set_edge_weight(graph=train_graph)
             for node_idx in train_graph.nodes():
                 train_graph.nodes[node_idx]['x']=[0.0]
 
 
-        return train_graph_list
+        return graph_list
     
     def generate_test_graph(self):
         graph=nx.Graph() # undirected graph 

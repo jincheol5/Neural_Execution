@@ -63,10 +63,9 @@ class Model_Trainer:
 
                 t=1
                 while t <= num_nodes:
+                    optimizer.zero_grad()
                     graph_t,x_t=self.dp.compute_bfs_step(graph=graph_t,source_id=source_id)
                     x_t=x_t.to(device)
-
-                    optimizer.zero_grad()
 
                     # get model output
                     output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
