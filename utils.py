@@ -70,13 +70,13 @@ class Data_Generator:
             # generate 4 community graph
             sub_node_num=node_num//4
             sub_graphs=[nx.erdos_renyi_graph(sub_node_num,p=0.3) for _ in range(4)]
-            graph=sub_graphs[0]
+            community_graph=sub_graphs[0]
             for i in range(1, len(sub_graphs)):
-                graph=nx.disjoint_union(graph,sub_graphs[i])
+                community_graph=nx.disjoint_union(community_graph,sub_graphs[i])
 
                 # 기존 그래프의 노드와 새로 추가된 그래프의 노드 범위 구하기
-                G_nodes = list(range(len(graph) - len(sub_graphs[i]), len(graph) - len(sub_graphs[i]) + len(sub_graphs[i])))
-                H_nodes = list(range(len(graph) - len(sub_graphs[i]), len(graph)))
+                G_nodes = list(range(len(community_graph) - len(sub_graphs[i]), len(community_graph) - len(sub_graphs[i]) + len(sub_graphs[i])))
+                H_nodes = list(range(len(community_graph) - len(sub_graphs[i]), len(community_graph)))
 
                 # 0.01의 확률로 두 커뮤니티 사이에 에지 생성
                 size = len(G_nodes) * len(H_nodes)
@@ -86,7 +86,8 @@ class Data_Generator:
                 edges = list(zip(g_nodes_to_connect, h_nodes_to_connect))
 
                 # 에지 추가
-                graph.add_edges_from(edges)
+                community_graph.add_edges_from(edges)
+            graph_list.append(community_graph)
 
         # set selp loop, edge weight, node feature
         for train_graph in graph_list:
