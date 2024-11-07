@@ -57,7 +57,7 @@ class Data_Generator:
             train_graph_list.append(tree_graph)
 
             # generate Erdos-Renyi graph
-            edge_probability=0.5
+            edge_probability=0.3
             Erdos_Renyi_graph=nx.erdos_renyi_graph(num_node,edge_probability)
             train_graph_list.append(Erdos_Renyi_graph)
 
