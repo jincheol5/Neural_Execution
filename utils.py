@@ -3,25 +3,27 @@ import networkx as nx
 import pickle
 import random
 import copy
+import numpy as np
 import torch
 from torch_geometric.data import Data
 
 
 class Data_Generator:
-    def __init__(self):
-        pass
 
-    def set_self_loop(self,graph): 
+    @staticmethod
+    def set_self_loop(graph): 
         self_loof_edge_list = [(node, node) for node in graph.nodes()] 
         graph.add_edges_from(self_loof_edge_list) 
         return graph
 
-    def set_edge_weight(self,graph):
+    @staticmethod
+    def set_edge_weight(graph):
         for source,target in graph.edges(): 
             graph[source][target]['edge_attr'] = [random.uniform(0.2, 1)] 
         return graph
 
-    def convert_grid_2d_to_int_id(self,graph):
+    @staticmethod
+    def convert_grid_2d_to_int_id(graph):
         # 그래프의 행과 열 크기를 가져옵니다.
         m = max(x for x, y in graph.nodes()) + 1
         n = max(y for x, y in graph.nodes()) + 1
@@ -37,44 +39,66 @@ class Data_Generator:
 
         return new_graph
 
-    def generate_graph_list(self,num_graph,num_node,edge_probability=0.5):
+    @staticmethod
+    def generate_graph_list(graph_num,node_num,edge_probability=0.5):
         graph_list=[]
 
         # generate
-        for _ in range(num_graph):
+        for _ in range(graph_num):
 
             # generate ladder graph
-            ladder_graph=nx.ladder_graph(n=num_node)
+            ladder_graph=nx.ladder_graph(n=node_num)
             graph_list.append(ladder_graph)
 
             # generate grid 2D graph
-            grid_2d_graph=nx.grid_2d_graph(m=num_node,n=num_node) # node id = (x,y), edge = ((0,0),(0,1)) 형태를 가짐 
-            grid_2d_graph=self.convert_grid_2d_to_int_id(grid_2d_graph)
+            grid_2d_graph=nx.grid_2d_graph(m=node_num,n=node_num) # node id = (x,y), edge = ((0,0),(0,1)) 형태를 가짐 
+            grid_2d_graph=Data_Generator.convert_grid_2d_to_int_id(grid_2d_graph)
             graph_list.append(grid_2d_graph)
 
             # generate tree graph
-            tree_graph=nx.random_tree(n=num_node)
+            tree_graph=nx.random_tree(n=node_num)
             graph_list.append(tree_graph)
 
             # generate Erdos-Renyi graph
-            Erdos_Renyi_graph=nx.erdos_renyi_graph(num_node,edge_probability)
+            Erdos_Renyi_graph=nx.erdos_renyi_graph(node_num,edge_probability)
             graph_list.append(Erdos_Renyi_graph)
 
             # generate Barabasi-Albert graph
-            Barabasi_Albert_graph = nx.barabasi_albert_graph(n=num_node, m=2)
+            Barabasi_Albert_graph = nx.barabasi_albert_graph(n=node_num, m=2)
             graph_list.append(Barabasi_Albert_graph)
 
+            # generate 4 community graph
+            sub_node_num=node_num//4
+            sub_graphs=[nx.erdos_renyi_graph(sub_node_num,p=0.3) for _ in range(4)]
+            graph=sub_graphs[0]
+            for i in range(1, len(sub_graphs)):
+                graph=nx.disjoint_union(graph,sub_graphs[i])
+
+                # 기존 그래프의 노드와 새로 추가된 그래프의 노드 범위 구하기
+                G_nodes = list(range(len(graph) - len(sub_graphs[i]), len(graph) - len(sub_graphs[i]) + len(sub_graphs[i])))
+                H_nodes = list(range(len(graph) - len(sub_graphs[i]), len(graph)))
+
+                # 0.01의 확률로 두 커뮤니티 사이에 에지 생성
+                size = len(G_nodes) * len(H_nodes)
+                number_of_edges = np.sum(np.random.uniform(size=size) <= 0.01)
+                g_nodes_to_connect = np.random.choice(G_nodes, replace=True, size=number_of_edges)
+                h_nodes_to_connect = np.random.choice(H_nodes, replace=True, size=number_of_edges)
+                edges = list(zip(g_nodes_to_connect, h_nodes_to_connect))
+
+                # 에지 추가
+                graph.add_edges_from(edges)
 
         # set selp loop, edge weight, node feature
         for train_graph in graph_list:
-            train_graph=self.set_self_loop(graph=train_graph)
-            train_graph=self.set_edge_weight(graph=train_graph)
+            train_graph=Data_Generator.set_self_loop(graph=train_graph)
+            train_graph=Data_Generator.set_edge_weight(graph=train_graph)
             for node_idx in train_graph.nodes():
                 train_graph.nodes[node_idx]['x']=[0.0]
 
 
         return graph_list
     
+    @staticmethod
     def generate_test_graph(self):
         graph=nx.Graph() # undirected graph 
         graph.add_edges_from([(0,2), (0,3),(2,1),(3,4)])
@@ -104,10 +128,9 @@ class Data_Loader:
         return data
 
 class Data_Processor:
-    def __init__(self):
-        pass
     
-    def compute_bfs_step(self,graph,init=False,source_id=0):
+    @staticmethod
+    def compute_bfs_step(graph,init=False,source_id=0):
         copy_graph=copy.deepcopy(graph)
         step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # (num_nodes,1)
         for node_idx in graph.nodes():
@@ -127,7 +150,8 @@ class Data_Processor:
 
         return copy_graph, step_x_label
 
-    def compute_reachability(self,graph,source_id):
+    @staticmethod
+    def compute_reachability(graph,source_id):
         nodes=list(graph.nodes())
         result_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # (num_nodes,1)
 

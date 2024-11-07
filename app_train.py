@@ -27,4 +27,5 @@ train_graph_list=dl.load_pickle(file_name="train_graph_list")
 test_graph_list=dl.load_pickle(file_name="test_graph_list")
 
 model_trainer.train_bfs(train_graph_list=train_graph_list,hidden_dim=32)
+model_trainer.save_model_state_dict(model_name="neural_execution_bfs")
 model_trainer.test_bfs(test_graph_list=test_graph_list,hidden_dim=32)

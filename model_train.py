@@ -33,6 +33,11 @@ class Model_Trainer:
             # 값이 다르면 (1, 1) 형태의 1.0 텐서 반환
             return torch.tensor([[1.0]])
     
+    def save_model_state_dict(self,model_name):
+        file_name=model_name+".pt"
+        save_path=os.path.join(os.getcwd(),"inference",file_name)
+        torch.save(self.model.state_dict(),save_path)
+    
     def train_bfs(self,train_graph_list,hidden_dim=32,lr=0.01,epochs=10):
         optimizer=torch.optim.Adam(self.model.parameters(), lr=lr)
         criterion = BCEWithLogitsLoss()
