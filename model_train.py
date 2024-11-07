@@ -94,14 +94,15 @@ class Model_Trainer:
                     # 50% 확률로 정답 힌트를 모델에 입력으로 주어, 학습이 안정되도록 돕는다
                     # 테스트 시에는 이전 단계에서 디코딩된 힌트를 그대로 다음 단계의 입력으로 사용한다
                     # set x, y값의 일부만 다음 time step의 x 값으로 전달
-                    next_input = torch.zeros_like(cls_y).to(device)   # (num_nodes, 1) 형태의 빈 텐서 GPU에서 생성
-                    for i in range(num_nodes):
-                        # 각 노드에 대해 확률적으로 y 또는 x_t 선택
-                        if random.random() < 0.5:
-                            next_input[i] = x_t[i]  # 실제 라벨 값 선택
-                        else:
-                            next_input[i] = cls_y[i]  # 예측값 선택
-                    x=next_input.detach()
+                    # next_input = torch.zeros_like(cls_y).to(device)   # (num_nodes, 1) 형태의 빈 텐서 GPU에서 생성
+                    # for i in range(num_nodes):
+                    #     # 각 노드에 대해 확률적으로 y 또는 x_t 선택
+                    #     if random.random() < 0.5:
+                    #         next_input[i] = x_t[i]  # 실제 라벨 값 선택
+                    #     else:
+                    #         next_input[i] = cls_y[i]  # 예측값 선택
+                    # x=next_input.detach()
+                    x=x_t
                     t+=1
 
     def test_bfs(self,test_graph_list,hidden_dim=32):

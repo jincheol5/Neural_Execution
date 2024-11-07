@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 from torch_geometric.nn import MessagePassing
 
-device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 class BFS_Encoder(torch.nn.Module):
     def __init__(self, hidden_dim): 
         super().__init__()
