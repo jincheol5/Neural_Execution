@@ -225,7 +225,7 @@ class Data_Analysis:
 
         reachability_data = []
         for source in graph.nodes():
-            reachable_nodes = nx.node_connected_component(graph, source) # source 노드에서 도달 가능한 노드 집합 계산 (무방향 그래프)
+            reachable_nodes = nx.single_source_shortest_path_length(graph, source).keys() # source 노드에서 도달 가능한 노드 집합 계산 (무방향 그래프)
             total_nodes = len(graph)
             if total_nodes > 0:
                 reachability_ratio = len(reachable_nodes)/total_nodes # reachability 비율 계산
