@@ -2,7 +2,7 @@ import os
 import random
 import numpy as np
 import torch
-from utils import Data_Loader,Data_Analysis
+from utils import Data_Loader,Data_Analysis,Data_Generator
 from model_train import Model_Trainer
 
 ### seed setting
@@ -20,6 +20,7 @@ torch.backends.cudnn.benchmark = False
 
 ### Evaluation about Cora dataset
 graph=Data_Loader.load_graph(dataset_name="Cora")
+graph=Data_Generator.set_graph(graph=graph)
 top_10_src_dic=Data_Analysis.get_reachability_ratio(graph=graph)
 top_10_src_list=sorted(top_10_src_dic.keys())
 ml=Model_Trainer()

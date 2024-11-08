@@ -267,9 +267,6 @@ class Model_Trainer:
         model.load_state_dict(torch.load(load_path))
         model.eval()
 
-        print("node :",test_graph.number_of_nodes())
-        print("edge: ",test_graph.number_of_edges())
-
         with torch.no_grad():
             step_acc_list=[]
 

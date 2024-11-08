@@ -22,6 +22,15 @@ class Data_Generator:
         return graph
 
     @staticmethod
+    def set_graph(graph):
+        # set selp loop, edge weight, node feature
+        graph=Data_Generator.set_self_loop(graph=graph)
+        graph=Data_Generator.set_edge_weight(graph=graph)
+        for node_idx in graph.nodes():
+            graph.nodes[node_idx]['x']=[0.0]
+        return graph
+
+    @staticmethod
     def convert_grid_2d_to_int_id(graph):
         # 그래프의 행과 열 크기를 가져옵니다.
         m = max(x for x, y in graph.nodes()) + 1
@@ -90,11 +99,7 @@ class Data_Generator:
 
         # set selp loop, edge weight, node feature
         for train_graph in graph_list:
-            train_graph=Data_Generator.set_self_loop(graph=train_graph)
-            train_graph=Data_Generator.set_edge_weight(graph=train_graph)
-            for node_idx in train_graph.nodes():
-                train_graph.nodes[node_idx]['x']=[0.0]
-
+            train_graph=Data_Generator.set_graph(graph=train_graph)
 
         return graph_list
     
