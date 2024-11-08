@@ -275,7 +275,7 @@ class Model_Trainer:
             edge_index=data.edge_index.to(device)
             edge_attr=data.edge_attr.to(device)
 
-            for source_id in src_list:
+            for source_id in tqdm(src_list,desc="Evaluating..."):
                 # initialize h
                 h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).to(device) # h=(num_nodes,hidden_dim)
 
