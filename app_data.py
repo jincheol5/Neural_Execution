@@ -17,23 +17,4 @@ torch.cuda.manual_seed_all(seed)
 torch.backends.cudnn.deterministic = True 
 torch.backends.cudnn.benchmark = False
 
-# class instance 생성
-dl=Data_Loader()
-
-### train, test graph list 생성 및 저장
-# train = 각 노드 수가 20개인 six-type graph 각 100개씩 => 총 600개
-# test = 각 노드 수가 20, 30, 50개인 graph 각 10개씩 => 총 180개 
-# train_graph_list=Data_Generator.generate_graph_list(graph_num=100,node_num=20)
-test_graph_list=[]
-# test_graph_list.extend(Data_Generator.generate_graph_list(graph_num=10,node_num=20))
-# test_graph_list.extend(Data_Generator.generate_graph_list(graph_num=10,node_num=30))
-# test_graph_list.extend(Data_Generator.generate_graph_list(graph_num=10,node_num=50))
-test_graph_list.extend(Data_Generator.generate_4_community_graph_list(graph_num=10,node_num=20))
-test_graph_list.extend(Data_Generator.generate_4_community_graph_list(graph_num=10,node_num=30))
-test_graph_list.extend(Data_Generator.generate_4_community_graph_list(graph_num=10,node_num=50))
-
-# dl.save_pickle(data=train_graph_list,file_name="train_graph_list")
-# dl.save_pickle(data=test_graph_list,file_name="test_graph_list")
-dl.save_pickle(data=test_graph_list,file_name="test_4_community_graph_list")
-
 

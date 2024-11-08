@@ -6,11 +6,9 @@ import copy
 import pandas as pd
 import numpy as np
 import torch
-from torch_geometric.data import Data
 
 
 class Data_Generator:
-
     @staticmethod
     def set_self_loop(graph): 
         self_loof_edge_list = [(node, node) for node in graph.nodes()] 
@@ -149,24 +147,40 @@ class Data_Generator:
 
 
 class Data_Loader:
-    def __init__(self):
-        self.pickle_path=os.path.join(os.getcwd(),'data')
+    pickle_path=os.path.join(os.getcwd(),'data')
+    dataset_path=os.path.join('..','data')
 
-    def save_pickle(self,data,file_name):
+    @staticmethod
+    def save_pickle(data,file_name):
         file_name=file_name+".pkl"
-        with open(os.path.join(self.pickle_path,file_name),'wb') as f:
+        with open(os.path.join(Data_Loader.pickle_path,file_name),'wb') as f:
             pickle.dump(data,f)
         print("Save "+file_name)
 
-    def load_pickle(self,file_name):
+    @staticmethod
+    def load_pickle(file_name):
         file_name=file_name+".pkl"
-        with open(os.path.join(self.pickle_path,file_name),'rb') as f:
+        with open(os.path.join(Data_Loader.pickle_path,file_name),'rb') as f:
             data=pickle.load(f)
         print("Load "+file_name)
         return data
 
+    @staticmethod
+    def load_graph(dataset_name):
+        load_path=os.path.join(Data_Loader.dataset_path,dataset_name)
+        x_df=pd.read_csv(os.path.join(load_path,"x.csv"))
+        edge_index_df=pd.read_csv(os.path.join(load_path,"edge_index.csv"))
+
+        node_num=x_df.shape[0]
+
+        graph=nx.Graph()
+        graph.add_nodes_from(range(node_num))
+        graph.add_edges_from(zip(edge_index_df['source'], edge_index_df['target']))
+
+        return graph
+
+
 class Data_Processor:
-    
     @staticmethod
     def compute_bfs_step(graph,init=False,source_id=0):
         copy_graph=copy.deepcopy(graph)
@@ -200,51 +214,26 @@ class Data_Processor:
         return result_tensor
 
 class Data_Analysis:
-    def __init__(self):
-        self.file_path=os.path.join("..","data")
-    
-    def find_top_10_sources_with_reachability_csv(self,dataset_name):
-        df=pd.read_csv(os.path.join(self.file_path,dataset_name,"reach.csv"))
-        
-        # 각 source에 대해 도달 가능성 비율을 계산
-        reachability = df.groupby('source').apply(lambda x: np.mean(x['label'])).reset_index()
-        reachability.columns = ['source', 'reachability_ratio']
+    @staticmethod
+    def get_reachability_ratio(graph: nx.Graph):
+        ### graph 내에서 reachability 비율이 50%에 가까운 상위 10개의 node 정보 반환
 
-        # 도달성 비율이 50%에 가까운 source 상위 10개 선택
-        reachability['distance_to_50'] = np.abs(reachability['reachability_ratio'] - 0.5)
-        top_100_sources = reachability.nsmallest(10, 'distance_to_50')[['source', 'reachability_ratio']]
-
-        # 결과를 dictionary 형태로 변환
-        result_dict = dict(zip(top_100_sources['source'], top_100_sources['reachability_ratio']))
-        
-        return result_dict
-    
-    def find_top_10_sources_with_reachability_networkx_graph(self,graph: nx.Graph):
-        # 각 source 노드에 대해 도달 가능성 비율 계산
         reachability_data = []
-
         for source in graph.nodes():
-            # source 노드에서 도달 가능한 노드 집합 계산 (무방향 그래프)
-            reachable_nodes = nx.node_connected_component(graph, source)
-            total_nodes = len(graph) - 1  # 자신을 제외한 노드 수
-
+            reachable_nodes = nx.node_connected_component(graph, source) # source 노드에서 도달 가능한 노드 집합 계산 (무방향 그래프)
+            total_nodes = len(graph)
             if total_nodes > 0:
-                # 도달 가능성 비율 계산
-                reachability_ratio = (len(reachable_nodes) - 1) / total_nodes
+                reachability_ratio = len(reachable_nodes)/total_nodes # reachability 비율 계산
             else:
-                reachability_ratio = 0
-
-            # 결과를 리스트에 추가
+                reachability_ratio = 0.0
             reachability_data.append((source, reachability_ratio))
 
-        # 결과를 DataFrame으로 변환
         reachability_df = pd.DataFrame(reachability_data, columns=['source', 'reachability_ratio'])
 
-        # 도달성 비율이 50%에 가까운 source 상위 10개 선택
+        # 도달 가능성 비율이 50%에 가까운 source 상위 10개 선택
         reachability_df['distance_to_50'] = np.abs(reachability_df['reachability_ratio'] - 0.5)
-        top_10_sources = reachability_df.nsmallest(10, 'distance_to_50')[['source', 'reachability_ratio']]
+        top_10_sources = reachability_df.nsmallest(10, 'distance_to_50')[['source', 'reachability_ratio']] 
 
-        # 결과를 dictionary 형태로 변환
         result_dict = dict(zip(top_10_sources['source'], top_10_sources['reachability_ratio']))
 
         return result_dict
