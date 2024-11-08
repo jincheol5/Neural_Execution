@@ -138,8 +138,9 @@ class Data_Generator:
 
     @staticmethod
     def generate_test_graph(self):
-        graph=nx.Graph() # undirected graph 
-        graph.add_edges_from([(0,2), (0,3),(2,1),(3,4)])
+        graph=nx.Graph() # undirected graph
+        graph.add_nodes_from([0,1,2,3,4]) 
+        graph.add_edges_from([(0,2), (0,3)])
         graph=self.set_self_loop(graph=graph)
         graph=self.set_edge_weight(graph=graph)
         for node_idx in graph.nodes():
@@ -202,7 +203,7 @@ class Data_Analysis:
     def __init__(self):
         self.file_path=os.path.join("..","data")
     
-    def find_top_10_sources_with_reachability(self,dataset_name):
+    def find_top_10_sources_with_reachability_csv(self,dataset_name):
         df=pd.read_csv(os.path.join(self.file_path,dataset_name,"reach.csv"))
         
         # 각 source에 대해 도달 가능성 비율을 계산
@@ -216,4 +217,34 @@ class Data_Analysis:
         # 결과를 dictionary 형태로 변환
         result_dict = dict(zip(top_100_sources['source'], top_100_sources['reachability_ratio']))
         
+        return result_dict
+    
+    def find_top_10_sources_with_reachability_networkx_graph(self,graph: nx.Graph):
+        # 각 source 노드에 대해 도달 가능성 비율 계산
+        reachability_data = []
+
+        for source in graph.nodes():
+            # source 노드에서 도달 가능한 노드 집합 계산 (무방향 그래프)
+            reachable_nodes = nx.node_connected_component(graph, source)
+            total_nodes = len(graph) - 1  # 자신을 제외한 노드 수
+
+            if total_nodes > 0:
+                # 도달 가능성 비율 계산
+                reachability_ratio = (len(reachable_nodes) - 1) / total_nodes
+            else:
+                reachability_ratio = 0
+
+            # 결과를 리스트에 추가
+            reachability_data.append((source, reachability_ratio))
+
+        # 결과를 DataFrame으로 변환
+        reachability_df = pd.DataFrame(reachability_data, columns=['source', 'reachability_ratio'])
+
+        # 도달성 비율이 50%에 가까운 source 상위 10개 선택
+        reachability_df['distance_to_50'] = np.abs(reachability_df['reachability_ratio'] - 0.5)
+        top_10_sources = reachability_df.nsmallest(10, 'distance_to_50')[['source', 'reachability_ratio']]
+
+        # 결과를 dictionary 형태로 변환
+        result_dict = dict(zip(top_10_sources['source'], top_10_sources['reachability_ratio']))
+
         return result_dict

@@ -1,5 +1,7 @@
-from utils import Data_Loader
+from utils import Data_Loader,Data_Generator
+from model_train import Model_Trainer
 
-dl=Data_Loader()
-test_graph_list=dl.load_pickle(file_name="test_graph_list")
-print(len(test_graph_list))
+graph=Data_Generator().generate_test_graph()
+
+mt=Model_Trainer()
+mt.test_bfs_one(test_graph=graph,model_file_name="neural_execution_bfs",hidden_dim=32)

@@ -260,9 +260,9 @@ class Model_Trainer:
             print()
 
 
-    def test_bfs_one(self,test_graph,hidden_dim=32):
+    def test_bfs_one(self,test_graph,model_file_name,hidden_dim=32):
         model=BFS_Neural_Execution(hidden_dim=32)
-        load_path=os.path.join(os.getcwd(), "inference",file_name+".pt")
+        load_path=os.path.join(os.getcwd(), "inference",model_file_name+".pt")
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model.to(device)
         model.load_state_dict(torch.load(load_path))
