@@ -7,13 +7,13 @@ import torch.nn.functional as F
 from torch.nn import BCEWithLogitsLoss
 from torch_geometric.utils.convert import from_networkx
 from utils import Data_Processor
+from model import BFS_Neural_Execution
 
 
 
 class Model_Trainer:
     def __init__(self,model=None):
         self.model=model
-        self.dp=Data_Processor()
     
     def set_model(self,model):
         self.model=model
@@ -58,10 +58,10 @@ class Model_Trainer:
                 h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).detach().to(device) # h=(num_nodes,hidden_dim)
 
                 # for termination
-                last_x_label=self.dp.compute_reachability(graph=train_graph,source_id=source_id).to(device)
+                last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device)
 
                 # initialize step
-                graph_0,x_0=self.dp.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
+                graph_0,x_0=Data_Processor.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
                 x=x_0.detach().to(device) # x=(num_nodes,1)
 
                 graph_t=graph_0
@@ -69,7 +69,7 @@ class Model_Trainer:
                 t=1
                 while t <= num_nodes:
                     optimizer.zero_grad()
-                    graph_t,x_t=self.dp.compute_bfs_step(graph=graph_t,source_id=source_id)
+                    graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
                     x_t=x_t.to(device)
 
                     # get model output
@@ -131,18 +131,18 @@ class Model_Trainer:
                 h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).to(device) # h=(num_nodes,hidden_dim)
 
                 # for termination
-                last_x_label=self.dp.compute_reachability(graph=test_graph,source_id=source_id)
+                last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
                 last_x_label=last_x_label.to(device)
 
                 # initialize step
-                graph_0,x_0=self.dp.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
+                graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
                 x=x_0.to(device) # x=(num_nodes,1)
                 graph_t=graph_0
 
                 last_y=torch.zeros_like(x).to(device)
                 t=1
                 while t <= num_nodes:
-                    graph_t,x_t=self.dp.compute_bfs_step(graph=graph_t,source_id=source_id)
+                    graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
                     x_t=x_t.to(device)
 
                     # get model output
@@ -182,10 +182,91 @@ class Model_Trainer:
             print(f"{k} test graph step_acc_avg: {acc_dict['step_acc_avg']:.2%} and last_acc: {acc_dict['last_acc']:.2%}")
             print()
 
-    def test_bfs_one(self,test_graph,hidden_dim=32):
+
+    def evaluate_bfs(self,test_graph_list,model_file_name,hidden_dim=32):
+        model=BFS_Neural_Execution(hidden_dim=hidden_dim)
+        load_path=os.path.join(os.getcwd(), "inference",model_file_name+".pt")
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model.to(device)
-        self.model.eval()
+        model.to(device)
+        model.load_state_dict(torch.load(load_path))
+        model.eval()
+
+        acc_dict_list=[]
+
+        with torch.no_grad():
+            for test_graph in tqdm(test_graph_list,desc="Evaluating..."):
+                step_acc_list=[]
+
+                data=from_networkx(test_graph) # nx graph to pyg Data
+                num_nodes=data.x.size(0)
+                edge_index=data.edge_index.to(device)
+                edge_attr=data.edge_attr.to(device)
+
+                source_id=random.randint(0, num_nodes - 1)
+
+                # initialize h
+                h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).to(device) # h=(num_nodes,hidden_dim)
+
+                # for termination
+                last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
+                last_x_label=last_x_label.to(device)
+
+                # initialize step
+                graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
+                x=x_0.to(device) # x=(num_nodes,1)
+                graph_t=graph_0
+
+                last_y=torch.zeros_like(x).to(device)
+                t=1
+                while t <= num_nodes:
+                    graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
+                    x_t=x_t.to(device)
+
+                    # get model output
+                    output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                    # get and set h
+                    h=output['h'] # h=(num_nodes,hidden_dim)
+                    # get y, ter
+                    y=output['y'] # y=(num_nodes,1)
+                    cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
+                    ter=output['ter'] # ter=(1,1)
+                    
+                    # compute step accuracy
+                    step_acc=self.compute_accuracy(y=cls_y,label=x_t)
+                    step_acc_list.append(step_acc)
+
+                    # set x to cls_y and last_y to cls_y
+                    x=cls_y
+                    last_y=cls_y
+
+                    # terminate
+                    tau=F.sigmoid(ter)
+                    if tau.item()<=0.5:
+                        break
+                    t+=1
+                
+                # compute step acc and last acc
+                step_acc_avg=np.mean(step_acc_list)
+                last_acc=self.compute_accuracy(y=last_y,label=last_x_label)
+                acc_dict={}
+                acc_dict['step_acc_avg']=step_acc_avg
+                acc_dict['last_acc']=last_acc
+                acc_dict_list.append(acc_dict)
+
+        k=0
+        for acc_dict in acc_dict_list:
+            k+=1
+            print(f"{k} test graph step_acc_avg: {acc_dict['step_acc_avg']:.2%} and last_acc: {acc_dict['last_acc']:.2%}")
+            print()
+
+
+    def test_bfs_one(self,test_graph,hidden_dim=32):
+        model=BFS_Neural_Execution(hidden_dim=32)
+        load_path=os.path.join(os.getcwd(), "inference",file_name+".pt")
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model.to(device)
+        model.load_state_dict(torch.load(load_path))
+        model.eval()
 
         with torch.no_grad():
             step_acc_list=[]
@@ -201,22 +282,22 @@ class Model_Trainer:
             h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).to(device) # h=(num_nodes,hidden_dim)
 
             # for termination
-            last_x_label=self.dp.compute_reachability(graph=test_graph,source_id=source_id)
+            last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
             last_x_label=last_x_label.to(device)
 
             # initialize step
-            graph_0,x_0=self.dp.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
+            graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
             x=x_0.to(device) # x=(num_nodes,1)
             graph_t=graph_0
 
             last_y=torch.zeros_like(x).to(device)
             t=1
             while t <= num_nodes:
-                graph_t,x_t=self.dp.compute_bfs_step(graph=graph_t,source_id=source_id)
+                graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
                 x_t=x_t.to(device)
 
                 # get model output
-                output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
                 # get and set h
                 h=output['h'] # h=(num_nodes,hidden_dim)
                 # get y, ter

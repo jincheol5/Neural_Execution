@@ -20,12 +20,9 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 dl=Data_Loader()
-dg=Data_Generator()
-model=BFS_Neural_Execution(hidden_dim=32)
-model_trainer=Model_Trainer(model=model)
+test_graph_list=dl.load_pickle(file_name="test_4_community_graph_list")
 
-train_graph_list=dl.load_pickle(file_name="train_graph_list")
-test_graph=dg.generate_test_graph()
+mt=Model_Trainer()
+mt.evaluate_bfs(test_graph_list=test_graph_list,model_file_name="neural_execution_bfs",hidden_dim=32)
 
-model_trainer.train_bfs(train_graph_list=train_graph_list,hidden_dim=32)
-model_trainer.test_bfs_one(test_graph=test_graph,hidden_dim=32)
+

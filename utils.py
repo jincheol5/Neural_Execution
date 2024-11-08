@@ -3,6 +3,7 @@ import networkx as nx
 import pickle
 import random
 import copy
+import pandas as pd
 import numpy as np
 import torch
 from torch_geometric.data import Data
@@ -100,6 +101,42 @@ class Data_Generator:
         return graph_list
     
     @staticmethod
+    def generate_4_community_graph_list(graph_num,node_num):
+        graph_list=[]
+
+        # generate
+        for _ in range(graph_num):
+        # generate 4 community graph
+            sub_node_num=node_num//4
+            sub_graphs=[nx.erdos_renyi_graph(sub_node_num,p=0.3) for _ in range(4)]
+            community_graph=sub_graphs[0]
+            for i in range(1, len(sub_graphs)):
+                community_graph=nx.disjoint_union(community_graph,sub_graphs[i])
+
+                # 기존 그래프의 노드와 새로 추가된 그래프의 노드 범위 구하기
+                G_nodes = list(range(len(community_graph) - len(sub_graphs[i]), len(community_graph) - len(sub_graphs[i]) + len(sub_graphs[i])))
+                H_nodes = list(range(len(community_graph) - len(sub_graphs[i]), len(community_graph)))
+
+                # 0.01의 확률로 두 커뮤니티 사이에 에지 생성
+                size = len(G_nodes) * len(H_nodes)
+                number_of_edges = np.sum(np.random.uniform(size=size) <= 0.01)
+                g_nodes_to_connect = np.random.choice(G_nodes, replace=True, size=number_of_edges)
+                h_nodes_to_connect = np.random.choice(H_nodes, replace=True, size=number_of_edges)
+                edges = list(zip(g_nodes_to_connect, h_nodes_to_connect))
+
+                # 에지 추가
+                community_graph.add_edges_from(edges)
+            graph_list.append(community_graph)
+
+        # set selp loop, edge weight, node feature
+        for train_graph in graph_list:
+            train_graph=Data_Generator.set_self_loop(graph=train_graph)
+            train_graph=Data_Generator.set_edge_weight(graph=train_graph)
+            for node_idx in train_graph.nodes():
+                train_graph.nodes[node_idx]['x']=[0.0]
+        return graph_list
+
+    @staticmethod
     def generate_test_graph(self):
         graph=nx.Graph() # undirected graph 
         graph.add_edges_from([(0,2), (0,3),(2,1),(3,4)])
@@ -113,7 +150,6 @@ class Data_Generator:
 class Data_Loader:
     def __init__(self):
         self.pickle_path=os.path.join(os.getcwd(),'data')
-        self.dataset_path=os.path.join("..","data")
 
     def save_pickle(self,data,file_name):
         file_name=file_name+".pkl"
@@ -161,3 +197,23 @@ class Data_Processor:
                 result_tensor[tar][0]=1.0
 
         return result_tensor
+
+class Data_Analysis:
+    def __init__(self):
+        self.file_path=os.path.join("..","data")
+    
+    def find_top_10_sources_with_reachability(self,dataset_name):
+        df=pd.read_csv(os.path.join(self.file_path,dataset_name,"reach.csv"))
+        
+        # 각 source에 대해 도달 가능성 비율을 계산
+        reachability = df.groupby('source').apply(lambda x: np.mean(x['label'])).reset_index()
+        reachability.columns = ['source', 'reachability_ratio']
+
+        # 도달성 비율이 50%에 가까운 source 상위 10개 선택
+        reachability['distance_to_50'] = np.abs(reachability['reachability_ratio'] - 0.5)
+        top_100_sources = reachability.nsmallest(10, 'distance_to_50')[['source', 'reachability_ratio']]
+
+        # 결과를 dictionary 형태로 변환
+        result_dict = dict(zip(top_100_sources['source'], top_100_sources['reachability_ratio']))
+        
+        return result_dict
