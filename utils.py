@@ -137,12 +137,12 @@ class Data_Generator:
         return graph_list
 
     @staticmethod
-    def generate_test_graph(self):
+    def generate_test_graph():
         graph=nx.Graph() # undirected graph
         graph.add_nodes_from([0,1,2,3,4]) 
         graph.add_edges_from([(0,2), (0,3)])
-        graph=self.set_self_loop(graph=graph)
-        graph=self.set_edge_weight(graph=graph)
+        graph=Data_Generator.set_self_loop(graph=graph)
+        graph=Data_Generator.set_edge_weight(graph=graph)
         for node_idx in graph.nodes():
                 graph.nodes[node_idx]['x']=[0.0]
         return graph
