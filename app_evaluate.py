@@ -20,12 +20,7 @@ torch.backends.cudnn.benchmark = False
 
 ### Evaluation about Cora dataset
 graph=Data_Loader.load_graph(dataset_name="Cora")
-
-print("node count: ",graph.number_of_nodes())
-print("edge count: ",graph.number_of_edges())
-
-
-# top_10_src_dic=Data_Analysis.get_reachability_ratio(graph=graph)
-# top_10_src_list=sorted(top_10_src_dic.keys())
-# ml=Model_Trainer()
-# ml.evaluate_bfs_dataset(test_graph=graph,model_file_name="neural_execution_bfs",src_list=top_10_src_list,hidden_dim=32)
+top_10_src_dic=Data_Analysis.get_reachability_ratio(graph=graph)
+top_10_src_list=sorted(top_10_src_dic.keys())
+ml=Model_Trainer()
+ml.evaluate_bfs_dataset(test_graph=graph,model_file_name="neural_execution_bfs",src_list=top_10_src_list,hidden_dim=32)
