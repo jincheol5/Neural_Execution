@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.nn import MessagePassing
 
+### BFS
 class BFS_Encoder(torch.nn.Module):
     def __init__(self, hidden_dim): 
         super().__init__()
@@ -36,6 +37,18 @@ class BFS_Terminator(torch.nn.Module):
         output_mean = torch.mean(output, dim=0, keepdim=True)  # (1, 1)  
         return output_mean
 
+### Bellman-Ford
+class BF_Encoder(torch.nn.Module):
+    def __init__(self, hidden_dim): 
+        super().__init__()
+        self.linear=nn.Linear(1+hidden_dim,hidden_dim)
+        self.relu=nn.ReLU()
+
+    def forward(self, x,h):
+        z=self.linear(torch.cat([x,h],dim=-1))
+        return self.relu(z)
+
+### Processor
 class MPNN_Processor(MessagePassing):
     def __init__(self,hidden_dim):
         super().__init__(aggr="max")
@@ -67,6 +80,7 @@ class MPNN_Processor(MessagePassing):
 
         return self.propagate(edge_index=edge_index,z=z,edge_attr=edge_attr)
 
+### Models
 class BFS_Neural_Execution(torch.nn.Module):
     def __init__(self, hidden_dim):
         super().__init__()

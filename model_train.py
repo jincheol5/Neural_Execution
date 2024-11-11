@@ -109,6 +109,78 @@ class Model_Trainer:
                     x=x_t
                     t+=1
 
+    def train_bellman_ford(self,train_graph_list,hidden_dim=32,lr=0.01,epochs=10):
+        optimizer=torch.optim.Adam(self.model.parameters(), lr=lr)
+        criterion = BCEWithLogitsLoss()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model.to(device)
+        self.model.train()
+
+        for epoch in tqdm(range(epochs),desc="Training..."):
+            for train_graph in train_graph_list:
+                data=from_networkx(train_graph) # nx graph to pyg Data
+                num_nodes=data.x.size(0)
+                edge_index=data.edge_index.to(device)
+                edge_attr=data.edge_attr.to(device)
+
+                source_id=random.randint(0, num_nodes - 1)
+
+                # initialize h
+                h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).detach().to(device) # h=(num_nodes,hidden_dim)
+
+                # for termination
+                last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device)
+
+                # initialize step
+                graph_0,x_0=Data_Processor.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
+                x=x_0.detach().to(device) # x=(num_nodes,1)
+
+                graph_t=graph_0
+
+                t=1
+                while t <= num_nodes:
+                    optimizer.zero_grad()
+                    graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
+                    x_t=x_t.to(device)
+
+                    # get model output
+                    output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                    h=output['h'].detach() # h=(num_nodes,hidden_dim)
+                    y=output['y'] # y=(num_nodes,1)
+                    cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
+                    ter=output['ter'] # ter=(1,1)
+
+                    # set terminate standard
+                    ter_std=self.compare_tensors(tensor1=last_x_label,tensor2=x_t).to(device) # 마지막 step이면 0.0 아니면 1.0
+
+                    # 손실 함수 계산 및 오류 역전파 수행
+                    class_loss=criterion(y,x_t)
+                    terminate_loss=criterion(ter,ter_std)
+                    total_loss=class_loss+terminate_loss
+                    total_loss.backward()
+                    optimizer.step()
+
+                    # # 마지막 step인 경우 종료
+                    if float(ter_std)==0.0:
+                        break
+
+                    # Noisy Teacher Forcing
+                    # 학습 과정에서 모델이 자신의 예측값 대신 정답 (ground-truth)을 입력으로 받는 기법
+                    # 50% 확률로 정답 힌트를 모델에 입력으로 주어, 학습이 안정되도록 돕는다
+                    # 테스트 시에는 이전 단계에서 디코딩된 힌트를 그대로 다음 단계의 입력으로 사용한다
+                    # set x, y값의 일부만 다음 time step의 x 값으로 전달
+                    # next_input = torch.zeros_like(cls_y).to(device)   # (num_nodes, 1) 형태의 빈 텐서 GPU에서 생성
+                    # for i in range(num_nodes):
+                    #     # 각 노드에 대해 확률적으로 y 또는 x_t 선택
+                    #     if random.random() < 0.5:
+                    #         next_input[i] = x_t[i]  # 실제 라벨 값 선택
+                    #     else:
+                    #         next_input[i] = cls_y[i]  # 예측값 선택
+                    # x=next_input.detach()
+                    x=x_t
+                    t+=1
+
+
     def test_bfs(self,test_graph_list,hidden_dim=32):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.to(device)

@@ -134,21 +134,47 @@ class Data_Generator:
 
         # set selp loop, edge weight, node feature
         for train_graph in graph_list:
-            train_graph=Data_Generator.set_self_loop(graph=train_graph)
-            train_graph=Data_Generator.set_edge_weight(graph=train_graph)
-            for node_idx in train_graph.nodes():
-                train_graph.nodes[node_idx]['x']=[0.0]
+            train_graph=Data_Generator.set_graph(graph=train_graph)
         return graph_list
 
     @staticmethod
-    def generate_test_graph():
+    def generate_test_graph_for_check_bfs():
         graph=nx.Graph() # undirected graph
         graph.add_nodes_from([0,1,2,3,4]) 
         graph.add_edges_from([(0,2), (0,3)])
+        graph=Data_Generator.set_graph(graph=graph)
+        return graph
+    
+    @staticmethod
+    def generate_test_graph_for_check_bellman_ford():
+        graph=nx.Graph() # undirected graph
+        graph.add_nodes_from([0,1,2,3,4,5]) 
+        graph.add_edges_from([(0,1), (0,2), (1,2), (1,3), (2,4), (3,5), (4,1), (4,3), (4,5)])
         graph=Data_Generator.set_self_loop(graph=graph)
-        graph=Data_Generator.set_edge_weight(graph=graph)
+        
+        # set edge weight
+        graph[0][1]['edge_attr'] = [0.6]
+        graph[0][2]['edge_attr'] = [0.2]
+        graph[1][2]['edge_attr'] = [0.2]
+        graph[1][3]['edge_attr'] = [0.2]
+        graph[2][4]['edge_attr'] = [0.1]
+        graph[3][5]['edge_attr'] = [0.2]
+        graph[4][1]['edge_attr'] = [0.1]  
+        graph[4][3]['edge_attr'] = [0.3]
+        graph[4][5]['edge_attr'] = [0.4]
+
+        graph[0][0]['edge_attr'] = [0.0]
+        graph[1][1]['edge_attr'] = [0.0]
+        graph[2][2]['edge_attr'] = [0.0]
+        graph[3][3]['edge_attr'] = [0.0]
+        graph[4][4]['edge_attr'] = [0.0]
+        graph[5][5]['edge_attr'] = [0.0]
+
+        # set x feature
         for node_idx in graph.nodes():
-                graph.nodes[node_idx]['x']=[0.0]
+            graph.nodes[node_idx]['x']=[0.0]
+            graph.nodes[node_idx]['predecessor']=[node_idx]
+
         return graph
 
 
@@ -220,6 +246,12 @@ class Data_Processor:
         return result_tensor
 
     @staticmethod
+    def convert_edge_attr_to_float(graph): # single_source_dijkstra_path_length() 함수를 위한 edge_attr 값 처리
+        for u, v, data in graph.edges(data=True):
+            if isinstance(data['edge_attr'], list) and len(data['edge_attr']) > 0:
+                data['weight'] = float(data['edge_attr'][0])  # 리스트의 첫 번째 값을 실수형으로 변환하여 'weight'에 저장
+
+    @staticmethod
     def compute_bellman_ford_step(graph,init=False,source_id=0):
         copy_graph=copy.deepcopy(graph)
         step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # new label, (num_nodes,1)
@@ -229,34 +261,36 @@ class Data_Processor:
             step_predecessor_label[node_idx][0]=graph.nodes[node_idx]['predecessor'][0]
         
         if init:
-            shortest_path_lengths=nx.single_source_dijkstra_path_length(G=copy_graph,source=source_id)
+            Data_Processor.convert_edge_attr_to_float(copy_graph)
+            shortest_path_lengths=nx.single_source_dijkstra_path_length(G=copy_graph,source=source_id,weight='weight')
             longest_shortest_path_length=max(shortest_path_lengths.values())
             copy_graph.graph['longest_shortest_path_length']=longest_shortest_path_length+1
 
             # node들의 x feature 값들을 longest_shortest_path_length+1 값으로 초기화
             for node_idx in graph.nodes():
                 copy_graph.nodes[node_idx]['x'][0]=copy_graph.graph['longest_shortest_path_length']
+                step_x_label[node_idx][0]=copy_graph.graph['longest_shortest_path_length']
 
             # source node의 x, predecessor 값들을 초기화
             copy_graph.nodes[source_id]['x'][0]=0.0
             step_x_label[source_id][0]=0.0
 
-            return copy_graph, step_x_label
+            return copy_graph, step_x_label, step_predecessor_label
 
         for node_idx in graph.nodes():
-            current_length=graph.nodes[node_idx]['x'] # 현재 노드의 최단 경로 길이
+            current_length=graph.nodes[node_idx]['x'][0] # 현재 노드의 최단 경로 길이
             prev=-1 # 이전 (선행)노드를 나타냄
             for neighbor_idx in graph.neighbors(node_idx):
                 edge_data = graph.get_edge_data(node_idx, neighbor_idx)
-                edge_weight = edge_data['edge_attr']
-                if graph.nodes[neighbor_idx]['x'] + edge_weight < current_length:
-                    current = min(current, graph.nodes[neighbor_idx]['x'] + edge_weight)
+                edge_weight = edge_data['edge_attr'][0]
+                if graph.nodes[neighbor_idx]['x'][0] + edge_weight < current_length:
+                    current_length = min(current_length, graph.nodes[neighbor_idx]['x'][0] + edge_weight)
                     prev = neighbor_idx
-            if current_length < graph.nodes[node_idx]['x']:
-                copy_graph.nodes[node_idx]['x'] = current
-                copy_graph.nodes[node_idx]['predecessor'] = prev
+            if current_length < graph.nodes[node_idx]['x'][0]:
+                copy_graph.nodes[node_idx]['x'][0] = current_length
+                copy_graph.nodes[node_idx]['predecessor'][0] = prev
 
-        return copy_graph, step_x_label
+        return copy_graph, step_x_label, step_predecessor_label
 
 class Data_Analysis:
     @staticmethod
