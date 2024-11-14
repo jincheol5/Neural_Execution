@@ -216,7 +216,7 @@ class Data_Processor:
     @staticmethod
     def compute_bfs_step(graph,init=False,source_id=0):
         copy_graph=copy.deepcopy(graph)
-        step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # new label, (num_nodes,1)
+        step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # step_x_label=(N,1)
         for node_idx in graph.nodes():
             step_x_label[node_idx][0]=graph.nodes[node_idx]['x'][0] 
 
@@ -237,7 +237,7 @@ class Data_Processor:
     @staticmethod
     def compute_reachability(graph,source_id):
         nodes=list(graph.nodes())
-        result_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # (num_nodes,1)
+        result_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # result_tensor=(N,1)
 
         for tar in nodes:
             if nx.has_path(graph,source=source_id,target=tar):
@@ -254,8 +254,8 @@ class Data_Processor:
     @staticmethod
     def compute_shortest_path_and_predecessor(graph,source_id):
         nodes=list(graph.nodes())
-        predecessor_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # (num_nodes,1)
-        distance_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # (num_nodes,1)
+        predecessor_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # predecessor_tensor=(N,1)
+        distance_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # distance_tensor=(N,1)
 
         Data_Processor.convert_edge_attr_to_float(graph)
 
@@ -270,8 +270,8 @@ class Data_Processor:
     @staticmethod
     def compute_bellman_ford_step(graph,init=False,source_id=0):
         copy_graph=copy.deepcopy(graph)
-        step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # new label, (num_nodes,1)
-        step_predecessor_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # new label, (num_nodes,1)
+        step_predecessor_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # step_predecessor_label=(N,1)
+        step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # step_x_label=(N,1)
         for node_idx in graph.nodes():
             step_x_label[node_idx][0]=graph.nodes[node_idx]['x'][0] 
             step_predecessor_label[node_idx][0]=graph.nodes[node_idx]['p'][0]

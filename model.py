@@ -10,7 +10,7 @@ class BFS_Encoder(torch.nn.Module):
         self.relu=nn.ReLU()
 
     def forward(self, x,h):
-        z=self.linear(torch.cat([x,h],dim=-1))
+        z=self.linear(torch.cat([x,h],dim=-1)) # output=(N,hidden_dim)
         return self.relu(z)
 
 class BFS_Decoder(torch.nn.Module):
@@ -19,7 +19,7 @@ class BFS_Decoder(torch.nn.Module):
         self.linear=nn.Linear(hidden_dim+hidden_dim,1)
 
     def forward(self, z, h):
-        output=self.linear(torch.cat([z,h],dim=-1))
+        output=self.linear(torch.cat([z,h],dim=-1)) # output=(N,1)
         return output
 
 class BFS_Terminator(torch.nn.Module):
@@ -28,12 +28,12 @@ class BFS_Terminator(torch.nn.Module):
         self.linear=nn.Linear(hidden_dim+hidden_dim, 1)
 
     def forward(self, h):
-        num_nodes=h.size(0)
+        N=h.size(0)
         h_mean=torch.mean(h,dim=0) # (hidden_feature,)
         h_mean=h_mean.unsqueeze(0) # (1,hidden_feature)
-        h_mean=h_mean.expand(num_nodes,-1) # (num_nodes,hidden_feature)
-        output=self.linear(torch.cat([h,h_mean],dim=-1)) # (num_nodes,1)
-        output_mean = torch.mean(output, dim=0, keepdim=True)  # (1, 1)  
+        h_mean=h_mean.expand(N,-1) # (n,hidden_feature)
+        output=self.linear(torch.cat([h,h_mean],dim=-1)) # (N,1)
+        output_mean = torch.mean(output, dim=0, keepdim=True)  # output_mean=(1, 1)  
         return output_mean
 
 ### Bellman-Ford
@@ -44,18 +44,18 @@ class BF_Encoder(torch.nn.Module):
         self.relu=nn.ReLU()
 
     def forward(self, x,h):
-        z=self.linear(torch.cat([x,h],dim=-1))
+        z=self.linear(torch.cat([x,h],dim=-1)) # output=(N,hidden_dim)
         return self.relu(z)
 
 class BF_Decoder(torch.nn.Module):
-    def __init__(self,hidden_dim,node_num):
+    def __init__(self,hidden_dim,N):
         super().__init__()
-        self.predecessor_linear=nn.Linear(hidden_dim+hidden_dim,node_num)
+        self.predecessor_linear=nn.Linear(hidden_dim+hidden_dim,N)
         self.distance_linear=nn.Linear(hidden_dim+hidden_dim,1)
         
     def forward(self, z, h):
-        predecessor_output=self.predecessor_linear(torch.cat([z,h],dim=-1))
-        distance_output=self.distance_linear(torch.cat([z,h],dim=-1))
+        predecessor_output=self.predecessor_linear(torch.cat([z,h],dim=-1)) # predecessor output=(N,N)
+        distance_output=self.distance_linear(torch.cat([z,h],dim=-1)) # distance output=(N,1)
         return predecessor_output,distance_output
 
 class BF_Terminator(torch.nn.Module):
@@ -64,12 +64,12 @@ class BF_Terminator(torch.nn.Module):
         self.linear=nn.Linear(hidden_dim+hidden_dim, 1)
 
     def forward(self, h):
-        num_nodes=h.size(0)
+        N=h.size(0)
         h_mean=torch.mean(h,dim=0) # (hidden_feature,)
         h_mean=h_mean.unsqueeze(0) # (1,hidden_feature)
-        h_mean=h_mean.expand(num_nodes,-1) # (num_nodes,hidden_feature)
-        output=self.linear(torch.cat([h,h_mean],dim=-1)) # (num_nodes,1)
-        output_mean = torch.mean(output, dim=0, keepdim=True)  # (1, 1)  
+        h_mean=h_mean.expand(N,-1) # (N,hidden_feature)
+        output=self.linear(torch.cat([h,h_mean],dim=-1)) # (N,1)
+        output_mean = torch.mean(output, dim=0, keepdim=True)  # output_mean=(1, 1)  
         return output_mean
 
 
@@ -121,8 +121,8 @@ class BFS_Neural_Execution(torch.nn.Module):
         y=self.decoder(z=z,h=h)
         tau=self.terminator(h=h)
 
-        output['h']=h # (num_nodes,hidden_dim)
-        output['y']=y # (num_nodes,1)
-        output['tau']=tau # (1,1)
+        output['h']=h # h=(N,hidden_dim)
+        output['y']=y # y=(N,1)
+        output['tau']=tau # tau=(1,1)
 
         return output

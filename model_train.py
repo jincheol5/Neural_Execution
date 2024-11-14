@@ -20,9 +20,9 @@ class Model_Trainer:
     
     def compute_accuracy(self,y,label):
         # y, label은 gpu 위에 있으나, 결과값 acc는 cpu로 반환
-        num_nodes=y.size(0)
+        N=y.size(0)
         correct=(y == label).sum().item()
-        acc=correct/num_nodes
+        acc=correct/N
         return acc
     
     def compare_tensors(self,tensor1,tensor2):
@@ -48,34 +48,34 @@ class Model_Trainer:
         for epoch in tqdm(range(epochs),desc="Training..."):
             for train_graph in train_graph_list:
                 data=from_networkx(train_graph) # nx graph to pyg Data
-                num_nodes=data.x.size(0)
+                N=data.x.size(0)
                 edge_index=data.edge_index.to(device)
                 edge_attr=data.edge_attr.to(device)
 
-                source_id=random.randint(0, num_nodes - 1)
+                source_id=random.randint(0, N - 1)
 
                 # initialize h
-                h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).detach().to(device) # h=(num_nodes,hidden_dim)
+                h=torch.zeros((N,hidden_dim), dtype=torch.float32).detach().to(device) # h=(N,hidden_dim)
 
                 # get last x label
                 last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device)
 
                 # initialize step
                 graph_0,x_0=Data_Processor.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
-                x=x_0.detach().to(device) # x=(num_nodes,1)
+                x=x_0.detach().to(device) # x=(N,1)
 
                 graph_t=graph_0
 
                 t=0
-                while t < num_nodes:
+                while t < N:
                     optimizer.zero_grad()
                     graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
                     x_t=x_t.to(device)
 
                     # get model output
                     output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
-                    h=output['h'].detach() # h=(num_nodes,hidden_dim)
-                    y=output['y'] # y=(num_nodes,1)
+                    h=output['h'].detach() # h=(N,hidden_dim)
+                    y=output['y'] # y=(N,1)
                     tau=output['tau'] # tau=(1,1)
 
                     # set terminate label at t 
@@ -106,28 +106,28 @@ class Model_Trainer:
         for epoch in tqdm(range(epochs),desc="Training..."):
             for train_graph in train_graph_list:
                 data=from_networkx(train_graph) # nx graph to pyg Data
-                num_nodes=data.x.size(0)
+                N=data.x.size(0)
                 edge_index=data.edge_index.to(device)
                 edge_attr=data.edge_attr.to(device)
 
-                source_id=random.randint(0, num_nodes - 1)
+                source_id=random.randint(0, N - 1)
 
                 # initialize h
-                h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).detach().to(device) # h=(num_nodes,hidden_dim)
+                h=torch.zeros((N,hidden_dim), dtype=torch.float32).detach().to(device) # h=(N,hidden_dim)
 
                 # for termination
                 last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device)
 
                 # initialize step
                 graph_0,p_0,x_0=Data_Processor.compute_bellman_ford_step(graph=train_graph,source_id=source_id,init=True)
-                p=p_0.detach().to(device) # p=(node_num,node_num)
-                x=x_0.detach().to(device) # x=(node_num,1)
+                p=p_0.detach().to(device) # p=(N,N)
+                x=x_0.detach().to(device) # x=(N,1)
                 
 
                 graph_t=graph_0
 
                 t=0
-                while t < num_nodes:
+                while t < N:
                     optimizer.zero_grad()
                     graph_t,p_t,x_t=Data_Processor.compute_bellman_ford_step(graph=graph_t,source_id=source_id)
                     p_t=p_t.to(device)
@@ -135,9 +135,9 @@ class Model_Trainer:
 
                     # get model output
                     output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
-                    h=output['h'].detach() # h=(num_nodes,hidden_dim)
-                    prec=output['prec'] # prec=(num_nodes,1)
-                    dist=output['dist'] # dist=(num_nodes,1)
+                    h=output['h'].detach() # h=(N,hidden_dim)
+                    prec=output['prec'] # prec=(N,1)
+                    dist=output['dist'] # dist=(N,1)
                     tau=output['tau'] # tau=(1,1)
 
                     # set terminate standard
@@ -171,14 +171,14 @@ class Model_Trainer:
                 step_acc_list=[]
 
                 data=from_networkx(test_graph) # nx graph to pyg Data
-                num_nodes=data.x.size(0)
+                N=data.x.size(0)
                 edge_index=data.edge_index.to(device)
                 edge_attr=data.edge_attr.to(device)
 
-                source_id=random.randint(0, num_nodes - 1)
+                source_id=random.randint(0, N - 1)
 
                 # initialize h
-                h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).to(device) # h=(num_nodes,hidden_dim)
+                h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
 
                 # for termination
                 last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
@@ -186,21 +186,21 @@ class Model_Trainer:
 
                 # initialize step
                 graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
-                x=x_0.to(device) # x=(num_nodes,1)
+                x=x_0.to(device) # x=(N,1)
                 graph_t=graph_0
 
                 last_y=torch.zeros_like(x).to(device)
                 t=1
-                while t <= num_nodes:
+                while t <= N:
                     graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
                     x_t=x_t.to(device)
 
                     # get model output
                     output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
                     # get and set h
-                    h=output['h'] # h=(num_nodes,hidden_dim)
+                    h=output['h'] # h=(N,hidden_dim)
                     # get y, ter
-                    y=output['y'] # y=(num_nodes,1)
+                    y=output['y'] # y=(N,1)
                     cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
                     ter=output['ter'] # ter=(1,1)
                     
@@ -248,14 +248,14 @@ class Model_Trainer:
                 step_acc_list=[]
 
                 data=from_networkx(test_graph) # nx graph to pyg Data
-                num_nodes=data.x.size(0)
+                N=data.x.size(0)
                 edge_index=data.edge_index.to(device)
                 edge_attr=data.edge_attr.to(device)
 
-                source_id=random.randint(0, num_nodes - 1)
+                source_id=random.randint(0, N - 1)
 
                 # initialize h
-                h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).to(device) # h=(num_nodes,hidden_dim)
+                h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
 
                 # for termination
                 last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
@@ -263,21 +263,21 @@ class Model_Trainer:
 
                 # initialize step
                 graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
-                x=x_0.to(device) # x=(num_nodes,1)
+                x=x_0.to(device) # x=(N,1)
                 graph_t=graph_0
 
                 last_y=torch.zeros_like(x).to(device)
                 t=1
-                while t <= num_nodes:
+                while t <= N:
                     graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
                     x_t=x_t.to(device)
 
                     # get model output
                     output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
                     # get and set h
-                    h=output['h'] # h=(num_nodes,hidden_dim)
+                    h=output['h'] # h=(N,hidden_dim)
                     # get y, ter
-                    y=output['y'] # y=(num_nodes,1)
+                    y=output['y'] # y=(N,1)
                     cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
                     ter=output['ter'] # ter=(1,1)
                     
@@ -321,13 +321,13 @@ class Model_Trainer:
             step_acc_list=[]
 
             data=from_networkx(test_graph) # nx graph to pyg Data
-            num_nodes=data.x.size(0)
+            N=data.x.size(0)
             edge_index=data.edge_index.to(device)
             edge_attr=data.edge_attr.to(device)
 
             for source_id in tqdm(src_list,desc="Evaluating..."):
                 # initialize h
-                h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).to(device) # h=(num_nodes,hidden_dim)
+                h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
 
                 # for termination
                 last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
@@ -335,21 +335,21 @@ class Model_Trainer:
 
                 # initialize step
                 graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
-                x=x_0.to(device) # x=(num_nodes,1)
+                x=x_0.to(device) # x=(N,1)
                 graph_t=graph_0
 
                 last_y=torch.zeros_like(x).to(device)
                 t=1
-                while t <= num_nodes:
+                while t <= N:
                     graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
                     x_t=x_t.to(device)
 
                     # get model output
                     output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
                     # get and set h
-                    h=output['h'] # h=(num_nodes,hidden_dim)
+                    h=output['h'] # h=(N,hidden_dim)
                     # get y, ter
-                    y=output['y'] # y=(num_nodes,1)
+                    y=output['y'] # y=(N,1)
                     cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
                     ter=output['ter'] # ter=(1,1)
                     
@@ -386,14 +386,14 @@ class Model_Trainer:
             step_acc_list=[]
 
             data=from_networkx(test_graph) # nx graph to pyg Data
-            num_nodes=data.x.size(0)
+            N=data.x.size(0)
             edge_index=data.edge_index.to(device)
             edge_attr=data.edge_attr.to(device)
 
-            source_id=random.randint(0, num_nodes - 1)
+            source_id=random.randint(0, N - 1)
 
             # initialize h
-            h=torch.zeros((num_nodes,hidden_dim), dtype=torch.float32).to(device) # h=(num_nodes,hidden_dim)
+            h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
 
             # for termination
             last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
@@ -401,21 +401,21 @@ class Model_Trainer:
 
             # initialize step
             graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
-            x=x_0.to(device) # x=(num_nodes,1)
+            x=x_0.to(device) # x=(N,1)
             graph_t=graph_0
 
             last_y=torch.zeros_like(x).to(device)
             t=1
-            while t <= num_nodes:
+            while t <= N:
                 graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
                 x_t=x_t.to(device)
 
                 # get model output
                 output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
                 # get and set h
-                h=output['h'] # h=(num_nodes,hidden_dim)
+                h=output['h'] # h=(N,hidden_dim)
                 # get y, ter
-                y=output['y'] # y=(num_nodes,1)
+                y=output['y'] # y=(N,1)
                 cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
                 ter=output['ter'] # ter=(1,1)
                 
