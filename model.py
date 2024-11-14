@@ -17,11 +17,10 @@ class BFS_Decoder(torch.nn.Module):
     def __init__(self,hidden_dim):
         super().__init__()
         self.linear=nn.Linear(hidden_dim+hidden_dim,1)
-        self.sigmoid=torch.nn.Sigmoid()
 
     def forward(self, z, h):
         output=self.linear(torch.cat([z,h],dim=-1))
-        return self.sigmoid(output)
+        return output
 
 class BFS_Terminator(torch.nn.Module):
     def __init__(self, hidden_dim):
@@ -47,6 +46,32 @@ class BF_Encoder(torch.nn.Module):
     def forward(self, x,h):
         z=self.linear(torch.cat([x,h],dim=-1))
         return self.relu(z)
+
+class BF_Decoder(torch.nn.Module):
+    def __init__(self,hidden_dim,node_num):
+        super().__init__()
+        self.predecessor_linear=nn.Linear(hidden_dim+hidden_dim,node_num)
+        self.distance_linear=nn.Linear(hidden_dim+hidden_dim,1)
+        
+    def forward(self, z, h):
+        predecessor_output=self.predecessor_linear(torch.cat([z,h],dim=-1))
+        distance_output=self.distance_linear(torch.cat([z,h],dim=-1))
+        return predecessor_output,distance_output
+
+class BF_Terminator(torch.nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.linear=nn.Linear(hidden_dim+hidden_dim, 1)
+
+    def forward(self, h):
+        num_nodes=h.size(0)
+        h_mean=torch.mean(h,dim=0) # (hidden_feature,)
+        h_mean=h_mean.unsqueeze(0) # (1,hidden_feature)
+        h_mean=h_mean.expand(num_nodes,-1) # (num_nodes,hidden_feature)
+        output=self.linear(torch.cat([h,h_mean],dim=-1)) # (num_nodes,1)
+        output_mean = torch.mean(output, dim=0, keepdim=True)  # (1, 1)  
+        return output_mean
+
 
 ### Processor
 class MPNN_Processor(MessagePassing):
@@ -94,10 +119,10 @@ class BFS_Neural_Execution(torch.nn.Module):
         z=self.encoder(x=x,h=pre_h)
         h=self.processor(z=z,edge_index=edge_index,edge_attr=edge_attr)
         y=self.decoder(z=z,h=h)
-        ter=self.terminator(h=h)
+        tau=self.terminator(h=h)
 
         output['h']=h # (num_nodes,hidden_dim)
         output['y']=y # (num_nodes,1)
-        output['ter']=ter # (1,1)
+        output['tau']=tau # (1,1)
 
         return output

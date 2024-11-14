@@ -28,7 +28,7 @@ class Data_Generator:
         graph=Data_Generator.set_edge_weight(graph=graph)
         for node_idx in graph.nodes():
             graph.nodes[node_idx]['x']=[0.0]
-            graph.nodes[node_idx]['predecessor']=[node_idx]
+            graph.nodes[node_idx]['p']=[node_idx]
         return graph
 
     @staticmethod
@@ -173,7 +173,7 @@ class Data_Generator:
         # set x feature
         for node_idx in graph.nodes():
             graph.nodes[node_idx]['x']=[0.0]
-            graph.nodes[node_idx]['predecessor']=[node_idx]
+            graph.nodes[node_idx]['p']=[node_idx]
 
         return graph
 
@@ -244,12 +244,28 @@ class Data_Processor:
                 result_tensor[tar][0]=1.0
 
         return result_tensor
-
+    
     @staticmethod
     def convert_edge_attr_to_float(graph): # single_source_dijkstra_path_length() 함수를 위한 edge_attr 값 처리
         for u, v, data in graph.edges(data=True):
             if isinstance(data['edge_attr'], list) and len(data['edge_attr']) > 0:
                 data['weight'] = float(data['edge_attr'][0])  # 리스트의 첫 번째 값을 실수형으로 변환하여 'weight'에 저장
+
+    @staticmethod
+    def compute_shortest_path_and_predecessor(graph,source_id):
+        nodes=list(graph.nodes())
+        predecessor_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # (num_nodes,1)
+        distance_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # (num_nodes,1)
+
+        Data_Processor.convert_edge_attr_to_float(graph)
+
+        predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='weight')
+        predecessor_dic[source_id][0]=source_id
+
+        for tar in nodes:
+            predecessor_tensor[tar][0]=predecessor_dic[tar][0]
+            distance_tensor[tar][0]=distance_dic[tar]
+        return predecessor_tensor,distance_tensor
 
     @staticmethod
     def compute_bellman_ford_step(graph,init=False,source_id=0):
@@ -258,18 +274,18 @@ class Data_Processor:
         step_predecessor_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # new label, (num_nodes,1)
         for node_idx in graph.nodes():
             step_x_label[node_idx][0]=graph.nodes[node_idx]['x'][0] 
-            step_predecessor_label[node_idx][0]=graph.nodes[node_idx]['predecessor'][0]
+            step_predecessor_label[node_idx][0]=graph.nodes[node_idx]['p'][0]
         
         if init:
             Data_Processor.convert_edge_attr_to_float(copy_graph)
-            shortest_path_lengths=nx.single_source_dijkstra_path_length(G=copy_graph,source=source_id,weight='weight')
-            longest_shortest_path_length=max(shortest_path_lengths.values())
-            copy_graph.graph['longest_shortest_path_length']=longest_shortest_path_length+1
+            _, distance_dic=nx.bellman_ford_predecessor_and_distance(G=copy_graph, source=source_id, weight='weight')
+            longest_shortest_path_length=max(distance_dic.values())
+            copy_graph.graph['longest_distance']=longest_shortest_path_length+1
 
             # node들의 x feature 값들을 longest_shortest_path_length+1 값으로 초기화
             for node_idx in graph.nodes():
-                copy_graph.nodes[node_idx]['x'][0]=copy_graph.graph['longest_shortest_path_length']
-                step_x_label[node_idx][0]=copy_graph.graph['longest_shortest_path_length']
+                copy_graph.nodes[node_idx]['x'][0]=copy_graph.graph['longest_distance']
+                step_x_label[node_idx][0]=copy_graph.graph['longest_distance']
 
             # source node의 x, predecessor 값들을 초기화
             copy_graph.nodes[source_id]['x'][0]=0.0
@@ -288,9 +304,9 @@ class Data_Processor:
                     prev = neighbor_idx
             if current_length < graph.nodes[node_idx]['x'][0]:
                 copy_graph.nodes[node_idx]['x'][0] = current_length
-                copy_graph.nodes[node_idx]['predecessor'][0] = prev
+                copy_graph.nodes[node_idx]['p'][0] = prev
 
-        return copy_graph, step_x_label, step_predecessor_label
+        return copy_graph, step_predecessor_label, step_x_label
 
 class Data_Analysis:
     @staticmethod

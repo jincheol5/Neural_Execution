@@ -2,43 +2,18 @@ import networkx as nx
 import numpy as np
 from utils import Data_Generator,Data_Processor
 
-graph=Data_Generator.generate_test_graph_for_check_bellman_ford()
+# 가중 무방향 그래프 생성
+G = nx.Graph()
 
+# 엣지 추가 (엣지 속성 'weight' 사용)
+G.add_edge(1, 2, edge_attr=0.1)
+G.add_edge(2, 3, edge_attr=0.2)
+G.add_edge(3, 4, edge_attr=0.1)
+G.add_edge(1, 4, edge_attr=0.5)
 
-print("Start x: ")
-for node_idx in graph.nodes():
-    print(graph.nodes[node_idx]['x'][0]) 
+# 다익스트라 알고리즘으로 predecessor와 최단 거리 계산
+predecessor, distance = nx.bellman_ford_predecessor_and_distance(G, source=1, weight='edge_attr')
 
-print("Start predecessor: ")
-for node_idx in graph.nodes():
-    print(graph.nodes[node_idx]['predecessor'][0]) 
-
-graph,step_x,step_p=Data_Processor.compute_bellman_ford_step(graph=graph,init=True,source_id=0)
-
-print("Initialize x: ")
-for node_idx in graph.nodes():
-    print(graph.nodes[node_idx]['x'][0]) 
-
-print("Initialize predecessor: ")
-for node_idx in graph.nodes():
-    print(graph.nodes[node_idx]['predecessor'][0]) 
-
-graph,step_x,step_p=Data_Processor.compute_bellman_ford_step(graph=graph,source_id=0)
-
-print("Step-1 x: ")
-for node_idx in graph.nodes():
-    print(graph.nodes[node_idx]['x'][0]) 
-
-print("Step-1 predecessor: ")
-for node_idx in graph.nodes():
-    print(graph.nodes[node_idx]['predecessor'][0]) 
-
-graph,step_x,step_p=Data_Processor.compute_bellman_ford_step(graph=graph,source_id=0)
-
-print("Step-2 x: ")
-for node_idx in graph.nodes():
-    print(graph.nodes[node_idx]['x'][0]) 
-
-print("Step-2 predecessor: ")
-for node_idx in graph.nodes():
-    print(graph.nodes[node_idx]['predecessor'][0]) 
+# 결과 출력
+print("Predecessor:", predecessor)
+print("Distance:", distance)
