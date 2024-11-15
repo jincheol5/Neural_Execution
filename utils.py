@@ -260,7 +260,7 @@ class Data_Processor:
         Data_Processor.convert_edge_attr_to_float(graph)
 
         predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='weight')
-        predecessor_dic[source_id][0]=source_id
+        predecessor_dic[source_id]=[source_id] # source_id: [] 인 공간 채우기 
 
         for tar in nodes:
             predecessor_tensor[tar][0]=predecessor_dic[tar][0]
