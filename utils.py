@@ -262,6 +262,8 @@ class Data_Processor:
         predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='weight')
         predecessor_dic[source_id]=[source_id] # source_id: [] 인 공간 채우기 
 
+        print(predecessor_dic)
+
         for tar in nodes:
             predecessor_tensor[tar][0]=predecessor_dic[tar][0]
             distance_tensor[tar][0]=distance_dic[tar]
