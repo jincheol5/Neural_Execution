@@ -254,25 +254,25 @@ class Data_Processor:
     @staticmethod
     def compute_shortest_path_and_predecessor(graph,source_id):
         nodes=list(graph.nodes())
-        predecessor_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # predecessor_tensor=(N,1)
+        predecessor_tensor=torch.zeros((len(nodes),1), dtype=torch.int) # predecessor_tensor=(N,1)
         distance_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # distance_tensor=(N,1)
 
         Data_Processor.convert_edge_attr_to_float(graph)
 
         predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='weight')
-        predecessor_dic[source_id]=[source_id] # source_id: [] 인 공간 채우기 
-
-        print(predecessor_dic)
 
         for tar in nodes:
-            predecessor_tensor[tar][0]=predecessor_dic[tar][0]
-            distance_tensor[tar][0]=distance_dic[tar]
+            if tar in predecessor_dic:
+                predecessor_tensor[tar][0]=predecessor_dic[tar][0]
+                distance_tensor[tar][0]=distance_dic[tar]
+            else:
+                predecessor_tensor[tar][0]=tar
         return predecessor_tensor,distance_tensor
 
     @staticmethod
     def compute_bellman_ford_step(graph,init=False,source_id=0):
         copy_graph=copy.deepcopy(graph)
-        step_predecessor_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # step_predecessor_label=(N,1)
+        step_predecessor_label=torch.zeros((len(graph.nodes()),1),dtype=torch.int) # step_predecessor_label=(N,1)
         step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # step_x_label=(N,1)
         for node_idx in graph.nodes():
             step_x_label[node_idx][0]=graph.nodes[node_idx]['x'][0] 
