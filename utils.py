@@ -259,7 +259,8 @@ class Data_Processor:
 
         Data_Processor.convert_edge_attr_to_float(graph)
 
-        predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='weight')
+        predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='weight') # 연결되지 않은 노드=key도 없음, source 노드=key는 있지만 value=[]
+        predecessor_dic[source_id]=[source_id]
 
         for tar in nodes:
             if tar in predecessor_dic:
