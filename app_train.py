@@ -3,7 +3,7 @@ import random
 import numpy as np
 import torch
 from utils import Data_Loader
-from model import BFS_Neural_Execution
+from model import BFS_Neural_Execution,BF_Neural_Execution
 from model_train import Model_Trainer
 
 ### seed setting
@@ -19,13 +19,12 @@ torch.cuda.manual_seed_all(seed)
 torch.backends.cudnn.deterministic = True 
 torch.backends.cudnn.benchmark = False
 
-dl=Data_Loader()
+### Load data
+train_graph_list=Data_Loader.load_pickle(file_name="train_graph_list")
+model_trainer=Model_Trainer()
+
+### BFS
 model=BFS_Neural_Execution(hidden_dim=32)
-model_trainer=Model_Trainer(model=model)
-
-train_graph_list=dl.load_pickle(file_name="train_graph_list")
-test_graph_list=dl.load_pickle(file_name="test_graph_list")
-
+model_trainer.set_model(model=model)
 model_trainer.train_bfs(train_graph_list=train_graph_list,hidden_dim=32)
 model_trainer.save_model_state_dict(model_name="neural_execution_bfs")
-model_trainer.test_bfs(test_graph_list=test_graph_list,hidden_dim=32)

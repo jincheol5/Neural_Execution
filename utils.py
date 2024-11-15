@@ -60,7 +60,7 @@ class Data_Generator:
             graph_list.append(ladder_graph)
 
             # generate grid 2D graph
-            grid_2d_graph=nx.grid_2d_graph(m=node_num,n=node_num) # node id = (x,y), edge = ((0,0),(0,1)) 형태를 가짐 
+            grid_2d_graph=nx.grid_2d_graph(m=node_num,n=node_num) # node id=(x,y), edge=((0,0),(0,1)) 형태를 가짐 
             grid_2d_graph=Data_Generator.convert_grid_2d_to_int_id(grid_2d_graph)
             graph_list.append(grid_2d_graph)
 

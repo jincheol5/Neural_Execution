@@ -126,3 +126,25 @@ class BFS_Neural_Execution(torch.nn.Module):
         output['tau']=tau # tau=(1,1)
 
         return output
+
+class BF_Neural_Execution(torch.nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.encoder=BF_Encoder(hidden_dim)
+        self.processor=MPNN_Processor(hidden_dim)
+        self.decoder=BF_Decoder(hidden_dim)
+        self.terminator=BF_Terminator(hidden_dim)
+
+    def forward(self, x,pre_h,edge_index,edge_attr):
+        output={}
+        z=self.encoder(x=x,h=pre_h)
+        h=self.processor(z=z,edge_index=edge_index,edge_attr=edge_attr)
+        prec,dist=self.decoder(z=z,h=h)
+        tau=self.terminator(h=h)
+
+        output['h']=h # h=(N,hidden_dim)
+        output['prec']=prec # prec=(N,N)
+        output['dist']=dist # dist=(N,1)
+        output['tau']=tau # tau=(1,1)
+
+        return output

@@ -2,7 +2,8 @@ import os
 import random
 import numpy as np
 import torch
-from utils import Data_Loader,Data_Analysis,Data_Generator
+from utils import Data_Loader
+from model import BFS_Neural_Execution,BF_Neural_Execution
 from model_train import Model_Trainer
 
 ### seed setting
@@ -18,10 +19,10 @@ torch.cuda.manual_seed_all(seed)
 torch.backends.cudnn.deterministic = True 
 torch.backends.cudnn.benchmark = False
 
-### Evaluation about Cora dataset
-graph=Data_Loader.load_graph(dataset_name="Cora")
-graph=Data_Generator.set_graph(graph=graph)
-top_10_src_dic=Data_Analysis.get_reachability_ratio(graph=graph)
-top_10_src_list=sorted(top_10_src_dic.keys())
-ml=Model_Trainer()
-ml.evaluate_bfs_dataset(test_graph=graph,model_file_name="neural_execution_bfs",src_list=top_10_src_list,hidden_dim=32)
+### Load data
+test_graph_list=Data_Loader.load_pickle(file_name="test_graph_list")
+model_trainer=Model_Trainer()
+
+### BFS
+model_file_name="neural_execution_bfs"
+model_trainer.evaluate_bfs(test_graph_list=test_graph_list,model_file_name=model_file_name,hidden_dim=32)
