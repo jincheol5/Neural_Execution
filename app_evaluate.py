@@ -26,3 +26,7 @@ model_trainer=Model_Trainer()
 ### BFS
 model_file_name="neural_execution_bfs"
 model_trainer.evaluate_bfs(test_graph_list=test_graph_list,model_file_name=model_file_name,hidden_dim=32)
+
+### Bellman-Ford
+model_file_name="neural_execution_bf"
+model_trainer.evaluate_bf(test_graph_list=test_graph_list,model_file_name=model_file_name,hidden_dim=32)

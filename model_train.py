@@ -205,8 +205,8 @@ class Model_Trainer:
                 graph_t=graph_0
 
                 last_y=torch.zeros_like(x).to(device)
-                t=1
-                while t <= N:
+                t=0
+                while t < N:
                     graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
                     x_t=x_t.to(device)
 
