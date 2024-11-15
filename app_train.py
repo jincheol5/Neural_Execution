@@ -3,7 +3,7 @@ import random
 import numpy as np
 import torch
 from utils import Data_Loader
-from model import BFS_Neural_Execution,BF_Neural_Execution
+from model import BFS_Neural_Execution,BF_Distance_Neural_Execution
 from model_train import Model_Trainer
 
 ### seed setting
@@ -29,8 +29,8 @@ model_trainer=Model_Trainer()
 # model_trainer.train_bfs(train_graph_list=train_graph_list,hidden_dim=32)
 # model_trainer.save_model_state_dict(model_name="neural_execution_bfs")
 
-### Bellman-Ford
-model=BF_Neural_Execution(hidden_dim=32)
+### Bellman-Ford distance
+model=BF_Distance_Neural_Execution(hidden_dim=32)
 model_trainer.set_model(model=model)
-model_trainer.train_bellman_ford(train_graph_list=train_graph_list,hidden_dim=32)
-model_trainer.save_model_state_dict(model_name="neural_execution_bf")
+model_trainer.train_bellman_ford_distance(train_graph_list=train_graph_list,hidden_dim=32)
+model_trainer.save_model_state_dict(model_name="neural_execution_bf_distance")

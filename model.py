@@ -48,15 +48,24 @@ class BF_Encoder(torch.nn.Module):
         return self.relu(z)
 
 class BF_Decoder(torch.nn.Module):
-    def __init__(self,hidden_dim,N):
+    def __init__(self,hidden_dim,max_N):
         super().__init__()
-        self.predecessor_linear=nn.Linear(hidden_dim+hidden_dim,N)
+        self.predecessor_linear=nn.Linear(hidden_dim+hidden_dim,max_N)
         self.distance_linear=nn.Linear(hidden_dim+hidden_dim,1)
         
     def forward(self, z, h):
-        predecessor_output=self.predecessor_linear(torch.cat([z,h],dim=-1)) # predecessor output=(N,N)
+        predecessor_output=self.predecessor_linear(torch.cat([z,h],dim=-1)) # predecessor output=(N,max_N)
         distance_output=self.distance_linear(torch.cat([z,h],dim=-1)) # distance output=(N,1)
         return predecessor_output,distance_output
+
+class BF_Distance_Decoder(torch.nn.Module):
+    def __init__(self,hidden_dim):
+        super().__init__()
+        self.distance_linear=nn.Linear(hidden_dim+hidden_dim,1)
+        
+    def forward(self, z, h):
+        distance_output=self.distance_linear(torch.cat([z,h],dim=-1)) # distance output=(N,1)
+        return distance_output
 
 class BF_Terminator(torch.nn.Module):
     def __init__(self, hidden_dim):
@@ -128,11 +137,11 @@ class BFS_Neural_Execution(torch.nn.Module):
         return output
 
 class BF_Neural_Execution(torch.nn.Module):
-    def __init__(self, hidden_dim):
+    def __init__(self, hidden_dim, max_N):
         super().__init__()
         self.encoder=BF_Encoder(hidden_dim)
         self.processor=MPNN_Processor(hidden_dim)
-        self.decoder=BF_Decoder(hidden_dim)
+        self.decoder=BF_Decoder(hidden_dim,max_N)
         self.terminator=BF_Terminator(hidden_dim)
 
     def forward(self, x,pre_h,edge_index,edge_attr):
@@ -144,6 +153,27 @@ class BF_Neural_Execution(torch.nn.Module):
 
         output['h']=h # h=(N,hidden_dim)
         output['prec']=prec # prec=(N,N)
+        output['dist']=dist # dist=(N,1)
+        output['tau']=tau # tau=(1,1)
+
+        return output
+
+class BF_Distance_Neural_Execution(torch.nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.encoder=BF_Encoder(hidden_dim)
+        self.processor=MPNN_Processor(hidden_dim)
+        self.decoder=BF_Distance_Decoder(hidden_dim)
+        self.terminator=BF_Terminator(hidden_dim)
+
+    def forward(self, x,pre_h,edge_index,edge_attr):
+        output={}
+        z=self.encoder(x=x,h=pre_h)
+        h=self.processor(z=z,edge_index=edge_index,edge_attr=edge_attr)
+        dist=self.decoder(z=z,h=h)
+        tau=self.terminator(h=h)
+
+        output['h']=h # h=(N,hidden_dim)
         output['dist']=dist # dist=(N,1)
         output['tau']=tau # tau=(1,1)
 

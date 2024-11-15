@@ -49,6 +49,21 @@ class Model_Trainer:
 
         return prec_acc, dist_acc
     
+    def compute_bf_distance_accuracy(self,dist,dist_label):
+        # dist, prec, dist_label, prec_label은 gpu 위에 있으나, 결과값 dist_acc,prec_acc는 cpu로 반환
+        N=dist.size(0)
+
+        dist=dist.squeeze() # dist=(N,1)->(N,)
+        dist_label=dist_label.squeeze() # dist_label=(N,1)->(N,)
+
+        # comput distance acc
+        # 절대 오차가 delta 이하인 경우 정확한 예측으로 간주
+        delta=0.5
+        correct_predictions = (torch.abs(dist - dist_label) < delta).float()
+        dist_acc = correct_predictions.mean().item()
+
+        return dist_acc
+    
     def compare_tensors(self,tensor1,tensor2):
         if torch.equal(tensor1, tensor2):
             # 값이 동일하면 (1, 1) 형태의 0.0 텐서 반환
@@ -164,6 +179,61 @@ class Model_Trainer:
                     distance_loss=dist_criterion(dist.squeeze(),x_t.squeeze())
                     terminate_loss=ter_criterion(tau.squeeze(),tau_t.squeeze())
                     total_loss=distance_loss+precessor_loss+terminate_loss
+                    total_loss.backward()
+                    optimizer.step()
+
+                    # # 마지막 step인 경우 종료
+                    if float(tau_t)==0.0:
+                        break
+
+                    x=x_t
+                    t+=1
+    
+    def train_bellman_ford_distance(self,train_graph_list,hidden_dim=32,lr=0.01,epochs=10):
+        optimizer=torch.optim.Adam(self.model.parameters(), lr=lr)
+        dist_criterion=torch.nn.MSELoss()
+        ter_criterion = torch.nn.BCEWithLogitsLoss()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model.to(device)
+        self.model.train()
+
+        for epoch in tqdm(range(epochs),desc="Training..."):
+            for train_graph in train_graph_list:
+                data=from_networkx(train_graph) # nx graph to pyg Data
+                N=data.x.size(0)
+                edge_index=data.edge_index.to(device)
+                edge_attr=data.edge_attr.to(device)
+
+                source_id=random.randint(0, N-1)
+
+                h=torch.zeros((N,hidden_dim), dtype=torch.float32).detach().to(device) # h=(N,hidden_dim)
+                _,last_x_label=Data_Processor.compute_shortest_path_and_predecessor(graph=train_graph,source_id=source_id)
+                last_x_label=last_x_label.to(device)
+
+                # initialize step
+                graph_0,_,x_0=Data_Processor.compute_bellman_ford_step(graph=train_graph,source_id=source_id,init=True)
+                x=x_0.detach().to(device) 
+                graph_t=graph_0
+
+                t=0
+                while t < N:
+                    optimizer.zero_grad()
+                    graph_t,_,x_t=Data_Processor.compute_bellman_ford_step(graph=graph_t,source_id=source_id)
+                    x_t=x_t.to(device)
+
+                    # get model output
+                    output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                    h=output['h'].detach() # h=(N,hidden_dim)
+                    dist=output['dist'] # dist=(N,1)
+                    tau=output['tau'] # tau=(1,1)
+
+                    # set terminate standard
+                    tau_t=self.compare_tensors(tensor1=last_x_label,tensor2=x_t).to(device) # 마지막 step이면 0.0 아니면 1.0
+
+                    # 손실 함수 계산 및 오류 역전파 수행
+                    distance_loss=dist_criterion(dist.squeeze(),x_t.squeeze())
+                    terminate_loss=ter_criterion(tau.squeeze(),tau_t.squeeze())
+                    total_loss=distance_loss+terminate_loss
                     total_loss.backward()
                     optimizer.step()
 
@@ -325,5 +395,75 @@ class Model_Trainer:
         for acc_dict in acc_dict_list:
             k+=1
             print(f"{k} test graph step_prec_acc_avg: {acc_dict['step_prec_acc_avg']:.2%} and last_prec_acc: {acc_dict['last_prec_acc']:.2%}")
+            print(f"{k} test graph step_dist_acc_avg: {acc_dict['step_dist_acc_avg']:.2%} and last_dist_acc: {acc_dict['last_dist_acc']:.2%}")
+            print()
+    
+    def evaluate_bf_distance(self,test_graph_list,model_file_name,hidden_dim=32):
+        model=BFS_Neural_Execution(hidden_dim=hidden_dim)
+        load_path=os.path.join(os.getcwd(), "inference",model_file_name+".pt")
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model.to(device)
+        model.load_state_dict(torch.load(load_path))
+        model.eval()
+
+        acc_dict_list=[]
+
+        with torch.no_grad():
+            for test_graph in tqdm(test_graph_list,desc="Evaluating..."):
+                step_dist_acc_list=[]
+                data=from_networkx(test_graph) # nx graph to pyg Data
+                N=data.x.size(0)
+                edge_index=data.edge_index.to(device)
+                edge_attr=data.edge_attr.to(device)
+                source_id=random.randint(0, N-1)
+
+                h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
+                _,last_x_label=Data_Processor.compute_shortest_path_and_predecessor(graph=test_graph,source_id=source_id)
+                last_x_label=last_x_label.to(device)
+
+                # initialize step
+                graph_0,_,x_0=Data_Processor.compute_bellman_ford_step(graph=test_graph,source_id=source_id,init=True)
+                x=x_0.to(device) # x=(N,1)
+                graph_t=graph_0
+
+                last_x=torch.zeros_like(x).to(device)
+                t=0
+                while t < N:
+                    graph_t,_,x_t=Data_Processor.compute_bellman_ford_step(graph=graph_t,source_id=source_id)
+                    x_t=x_t.to(device)
+
+                    # get model output
+                    output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                    # get and set h
+                    h=output['h'] # h=(N,hidden_dim)
+                    # get distance, tau
+                    dist=output['dist'] # dist=(N,1)
+                    tau=output['tau'] # tau=(1,1)
+                    
+                    # compute step accuracy
+                    step_dist_acc=self.compute_bf_distance_accuracy(dist=last_x,dist_label=last_x_label)
+                    step_dist_acc_list.append(step_dist_acc)
+
+                    # set x and last_x to dist
+                    x=dist
+                    last_x=dist
+
+                    # terminate
+                    tau=F.sigmoid(tau)
+                    if tau.item()<=0.5:
+                        break
+                    t+=1
+                
+                # compute step acc and last acc
+                step_dist_acc_avg=np.mean(step_dist_acc_list)
+                last_dist_acc=self.compute_bf_distance_accuracy(dist=last_x,dist_label=last_x_label)
+                acc_dict={}
+                acc_dict['step_dist_acc_avg']=step_dist_acc_avg
+                acc_dict['last_dist_acc']=last_dist_acc
+                acc_dict_list.append(acc_dict)
+
+        k=0
+        for acc_dict in acc_dict_list:
+            k+=1
             print(f"{k} test graph step_dist_acc_avg: {acc_dict['step_dist_acc_avg']:.2%} and last_dist_acc: {acc_dict['last_dist_acc']:.2%}")
             print()
