@@ -124,7 +124,7 @@ class Model_Trainer:
                     optimizer.step()
 
                     # 마지막 step인 경우 종료
-                    if float(tau_t)==0.0:
+                    if tau_t.item()==0.0:
                         break
                     x=x_t
                     t+=1
@@ -183,7 +183,7 @@ class Model_Trainer:
                     optimizer.step()
 
                     # # 마지막 step인 경우 종료
-                    if float(tau_t)==0.0:
+                    if tau_t.item()==0.0:
                         break
 
                     x=x_t
@@ -238,7 +238,7 @@ class Model_Trainer:
                     optimizer.step()
 
                     # # 마지막 step인 경우 종료
-                    if float(tau_t)==0.0:
+                    if tau_t.item()==0.0:
                         break
 
                     x=x_t
@@ -298,7 +298,6 @@ class Model_Trainer:
                     last_y=cls_y
 
                     # terminate
-                    tau=F.sigmoid(tau)
                     if tau.item()<=0.5:
                         break
                     t+=1
@@ -375,7 +374,6 @@ class Model_Trainer:
                     last_x=dist
 
                     # terminate
-                    tau=F.sigmoid(tau)
                     if tau.item()<=0.5:
                         break
                     t+=1
@@ -449,7 +447,6 @@ class Model_Trainer:
                     last_x=dist
 
                     # terminate
-                    tau=F.sigmoid(tau)
                     if tau.item()<=0.5:
                         break
                     t+=1

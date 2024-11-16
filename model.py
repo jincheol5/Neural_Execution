@@ -17,15 +17,17 @@ class BFS_Decoder(torch.nn.Module):
     def __init__(self,hidden_dim):
         super().__init__()
         self.linear=nn.Linear(hidden_dim+hidden_dim,1)
+        self.sigmoid=nn.Sigmoid()
 
     def forward(self, z, h):
         output=self.linear(torch.cat([z,h],dim=-1)) # output=(N,1)
-        return output
+        return self.sigmoid(output)
 
 class BFS_Terminator(torch.nn.Module):
     def __init__(self, hidden_dim):
         super().__init__()
         self.linear=nn.Linear(hidden_dim+hidden_dim, 1)
+        self.sigmoid=nn.Sigmoid()
 
     def forward(self, h):
         N=h.size(0)
@@ -33,8 +35,8 @@ class BFS_Terminator(torch.nn.Module):
         h_mean=h_mean.unsqueeze(0) # (1,hidden_feature)
         h_mean=h_mean.expand(N,-1) # (n,hidden_feature)
         output=self.linear(torch.cat([h,h_mean],dim=-1)) # (N,1)
-        output_mean = torch.mean(output, dim=0, keepdim=True)  # output_mean=(1, 1)  
-        return output_mean
+        output_mean = torch.mean(output, dim=0, keepdim=True)  # output_mean=(1, 1)
+        return self.sigmoid(output_mean)
 
 ### Bellman-Ford
 class BF_Encoder(torch.nn.Module):
@@ -71,6 +73,7 @@ class BF_Terminator(torch.nn.Module):
     def __init__(self, hidden_dim):
         super().__init__()
         self.linear=nn.Linear(hidden_dim+hidden_dim, 1)
+        self.sigmoid=nn.Sigmoid()
 
     def forward(self, h):
         N=h.size(0)
@@ -79,7 +82,7 @@ class BF_Terminator(torch.nn.Module):
         h_mean=h_mean.expand(N,-1) # (N,hidden_feature)
         output=self.linear(torch.cat([h,h_mean],dim=-1)) # (N,1)
         output_mean = torch.mean(output, dim=0, keepdim=True)  # output_mean=(1, 1)  
-        return output_mean
+        return self.sigmoid(output_mean)
 
 
 ### Processor
