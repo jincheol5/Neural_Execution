@@ -24,9 +24,9 @@ test_graph_list=Data_Loader.load_pickle(file_name="test_graph_list")
 model_trainer=Model_Trainer()
 
 ### BFS
-# model_file_name="neural_execution_bfs"
-# model_trainer.evaluate_bfs(test_graph_list=test_graph_list,model_file_name=model_file_name,hidden_dim=32)
+model_file_name="neural_execution_bfs"
+model_trainer.evaluate_bfs(test_graph_list=test_graph_list,model_file_name=model_file_name,hidden_dim=32)
 
 ### Bellman-Ford
-model_file_name="neural_execution_bf_distance"
-model_trainer.evaluate_bf_distance(test_graph_list=test_graph_list,model_file_name=model_file_name,hidden_dim=32)
+# model_file_name="neural_execution_bf_distance"
+# model_trainer.evaluate_bf_distance(test_graph_list=test_graph_list,model_file_name=model_file_name,hidden_dim=32)

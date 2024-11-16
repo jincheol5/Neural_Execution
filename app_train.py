@@ -24,13 +24,13 @@ train_graph_list=Data_Loader.load_pickle(file_name="train_graph_list")
 model_trainer=Model_Trainer()
 
 ### BFS
-# model=BFS_Neural_Execution(hidden_dim=32)
-# model_trainer.set_model(model=model)
-# model_trainer.train_bfs(train_graph_list=train_graph_list,hidden_dim=32)
-# model_trainer.save_model_state_dict(model_name="neural_execution_bfs")
+model=BFS_Neural_Execution(hidden_dim=32)
+model_trainer.set_model(model=model)
+model_trainer.train_bfs(train_graph_list=train_graph_list,hidden_dim=32)
+model_trainer.save_model_state_dict(model_name="neural_execution_bfs")
 
 ### Bellman-Ford distance
-model=BF_Distance_Neural_Execution(hidden_dim=32)
-model_trainer.set_model(model=model)
-model_trainer.train_bellman_ford_distance(train_graph_list=train_graph_list,hidden_dim=32)
-model_trainer.save_model_state_dict(model_name="neural_execution_bf_distance")
+# model=BF_Distance_Neural_Execution(hidden_dim=32)
+# model_trainer.set_model(model=model)
+# model_trainer.train_bellman_ford_distance(train_graph_list=train_graph_list,hidden_dim=32)
+# model_trainer.save_model_state_dict(model_name="neural_execution_bf_distance")
