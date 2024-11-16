@@ -49,32 +49,37 @@ class Data_Generator:
         return new_graph
 
     @staticmethod
-    def generate_graph_list(graph_num,node_num,edge_probability=0.5):
-        graph_list=[]
+    def generate_graph_list_dict(graph_num,node_num,edge_probability=0.5):
+        ladder_graph_list=[]
+        grid_2d_graph_list=[]
+        tree_graph_list=[]
+        Erdos_Renyi_graph_list=[]
+        Barabasi_Albert_graph_list=[]
+        community_graph_list=[]
 
         # generate
         for _ in range(graph_num):
 
             # generate ladder graph
             ladder_graph=nx.ladder_graph(n=node_num)
-            graph_list.append(ladder_graph)
+            ladder_graph_list.append(ladder_graph)
 
             # generate grid 2D graph
             grid_2d_graph=nx.grid_2d_graph(m=node_num,n=node_num) # node id=(x,y), edge=((0,0),(0,1)) 형태를 가짐 
             grid_2d_graph=Data_Generator.convert_grid_2d_to_int_id(grid_2d_graph)
-            graph_list.append(grid_2d_graph)
+            grid_2d_graph_list.append(grid_2d_graph)
 
             # generate tree graph
             tree_graph=nx.random_tree(n=node_num)
-            graph_list.append(tree_graph)
+            tree_graph_list.append(tree_graph)
 
             # generate Erdos-Renyi graph
             Erdos_Renyi_graph=nx.erdos_renyi_graph(node_num,edge_probability)
-            graph_list.append(Erdos_Renyi_graph)
+            Erdos_Renyi_graph_list.append(Erdos_Renyi_graph)
 
             # generate Barabasi-Albert graph
             Barabasi_Albert_graph = nx.barabasi_albert_graph(n=node_num, m=2)
-            graph_list.append(Barabasi_Albert_graph)
+            Barabasi_Albert_graph_list.append(Barabasi_Albert_graph)
 
             # generate 4 community graph
             sub_node_num=node_num//4
@@ -96,13 +101,22 @@ class Data_Generator:
 
                 # 에지 추가
                 community_graph.add_edges_from(edges)
-            graph_list.append(community_graph)
+            community_graph_list.append(community_graph)
 
         # set selp loop, edge weight, node feature
-        for train_graph in graph_list:
-            train_graph=Data_Generator.set_graph(graph=train_graph)
+        for graph_list in [ladder_graph_list,grid_2d_graph_list,tree_graph_list,Erdos_Renyi_graph_list,Barabasi_Albert_graph_list,community_graph_list]:
+            for graph in graph_list:
+                graph=Data_Generator.set_graph(graph=graph)
+        
+        graph_list_dict={}
+        graph_list_dict['ladder']=ladder_graph_list
+        graph_list_dict['grid']=grid_2d_graph_list
+        graph_list_dict['tree']=tree_graph_list
+        graph_list_dict['erdos_renyi']=Erdos_Renyi_graph_list
+        graph_list_dict['barabasi_albert']=Barabasi_Albert_graph_list
+        graph_list_dict['community']=community_graph_list
 
-        return graph_list
+        return graph_list_dict
     
     @staticmethod
     def generate_4_community_graph_list(graph_num,node_num):

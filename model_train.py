@@ -244,6 +244,71 @@ class Model_Trainer:
                     x=x_t
                     t+=1
 
+    def validate_bfs(self,val_graph_list,val_graph_type,hidden_dim=32):
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model.to(device)
+        self.model.eval()
+        
+        step_acc_avg_list=[]
+        last_acc_list=[]
+
+        with torch.no_grad():
+            for val_graph in tqdm(val_graph_list,desc="Evaluating..."):
+                step_acc_list=[]
+
+                data=from_networkx(val_graph) # nx graph to pyg Data
+                N=data.x.size(0)
+                edge_index=data.edge_index.to(device)
+                edge_attr=data.edge_attr.to(device)
+
+                source_id=random.randint(0, N - 1)
+
+                h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
+                last_x_label=Data_Processor.compute_reachability(graph=val_graph,source_id=source_id)
+                last_x_label=last_x_label.to(device)
+
+                # initialize step
+                graph_0,x_0=Data_Processor.compute_bfs_step(graph=val_graph,source_id=source_id,init=True)
+                x=x_0.to(device) 
+                graph_t=graph_0
+
+                last_y=torch.zeros_like(x).to(device)
+                t=0
+                while t < N:
+                    graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
+                    x_t=x_t.to(device)
+
+                    # get model output
+                    output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                    # get and set h
+                    h=output['h'] # h=(N,hidden_dim)
+                    # get y, tau
+                    y=output['y'] # y=(N,1)
+                    cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
+                    tau=output['tau'] # tau=(1,1)
+                    
+                    # compute step accuracy
+                    step_acc=self.compute_bfs_accuracy(y=cls_y,label=x_t)
+                    step_acc_list.append(step_acc)
+
+                    # set x to cls_y and last_y to cls_y
+                    x=cls_y
+                    last_y=cls_y
+
+                    # terminate
+                    if tau.item()<=0.5:
+                        break
+                    t+=1
+                
+                # compute step acc and last acc
+                step_acc_avg=np.mean(step_acc_list)
+                last_acc=self.compute_bfs_accuracy(y=last_y,label=last_x_label)
+                step_acc_avg_list.append(step_acc_avg)
+                last_acc_list.append(last_acc)
+
+        print(f"Validate {val_graph_type} graph dataset total step_acc_avg: {np.mean(step_acc_avg_list):.2%} and total last_acc_avg: {np.mean(last_acc_list):.2%}")
+        print()
+
     def evaluate_bfs(self,test_graph_list,model_file_name,hidden_dim=32):
         model=BFS_Neural_Execution(hidden_dim=hidden_dim)
         load_path=os.path.join(os.getcwd(), "inference",model_file_name+".pt")

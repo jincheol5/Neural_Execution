@@ -17,9 +17,14 @@ torch.cuda.manual_seed_all(seed)
 torch.backends.cudnn.deterministic = True 
 torch.backends.cudnn.benchmark = False
 
-train_graph_list=Data_Generator.generate_graph_list(graph_num=100,node_num=20,edge_probability=0.5)
-test_graph_list=[]
-for node_num in [20,50,100]:
-    test_graph_list=test_graph_list+Data_Generator.generate_graph_list(graph_num=5,node_num=node_num,edge_probability=0.5)
-Data_Loader.save_pickle(data=train_graph_list,file_name="train_graph_list")
-Data_Loader.save_pickle(data=test_graph_list,file_name="test_graph_list")
+train_graph_list_dict=Data_Generator.generate_graph_list_dict(graph_num=100,node_num=20,edge_probability=0.5)
+val_graph_list_dict=Data_Generator.generate_graph_list_dict(graph_num=3,node_num=20,edge_probability=0.5)
+test_graph_list_dict_20=Data_Generator.generate_graph_list_dict(graph_num=5,node_num=20,edge_probability=0.5)
+test_graph_list_dict_30=Data_Generator.generate_graph_list_dict(graph_num=5,node_num=30,edge_probability=0.5)
+test_graph_list_dict_50=Data_Generator.generate_graph_list_dict(graph_num=5,node_num=50,edge_probability=0.5)
+
+Data_Loader.save_pickle(data=train_graph_list_dict,file_name="train_graph_list_dict")
+Data_Loader.save_pickle(data=val_graph_list_dict,file_name="val_graph_list_dict")
+Data_Loader.save_pickle(data=test_graph_list_dict_20,file_name="test_graph_list_dict_20")
+Data_Loader.save_pickle(data=test_graph_list_dict_30,file_name="test_graph_list_dict_30")
+Data_Loader.save_pickle(data=test_graph_list_dict_50,file_name="test_graph_list_dict_50")
