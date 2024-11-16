@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.nn import BCEWithLogitsLoss,CrossEntropyLoss,MSELoss
 from torch_geometric.utils.convert import from_networkx
 from utils import Data_Processor
-from model import BFS_Neural_Execution
+from model import BFS_Neural_Execution,BF_Neural_Execution,BF_Distance_Neural_Execution
 
 
 
@@ -318,7 +318,7 @@ class Model_Trainer:
             print()
 
     def evaluate_bf(self,test_graph_list,model_file_name,hidden_dim=32):
-        model=BFS_Neural_Execution(hidden_dim=hidden_dim)
+        model=BF_Neural_Execution(hidden_dim=hidden_dim)
         load_path=os.path.join(os.getcwd(), "inference",model_file_name+".pt")
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model.to(device)
@@ -399,7 +399,7 @@ class Model_Trainer:
             print()
     
     def evaluate_bf_distance(self,test_graph_list,model_file_name,hidden_dim=32):
-        model=BFS_Neural_Execution(hidden_dim=hidden_dim)
+        model=BF_Distance_Neural_Execution(hidden_dim=hidden_dim)
         load_path=os.path.join(os.getcwd(), "inference",model_file_name+".pt")
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model.to(device)
