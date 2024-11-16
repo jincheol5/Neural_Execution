@@ -2,18 +2,26 @@ import networkx as nx
 import numpy as np
 from utils import Data_Generator,Data_Processor
 
-# 가중 무방향 그래프 생성
-G = nx.Graph()
+graph=Data_Generator.generate_test_graph_for_check_bellman_ford()
+N=graph.number_of_nodes()
+source_id=0
 
-# 엣지 추가 (엣지 속성 'weight' 사용)
-G.add_edge(1, 2, edge_attr=0.1)
-G.add_edge(2, 3, edge_attr=0.2)
-G.add_edge(3, 4, edge_attr=0.1)
-G.add_edge(1, 4, edge_attr=0.5)
+graph_0,_,x_0=Data_Processor.compute_bellman_ford_step(graph=graph,init=True,source_id=source_id)
+for node, data in graph_0.nodes(data=True):
+    print(f"Node {node}: x = {data.get('x')}")
 
-# 다익스트라 알고리즘으로 predecessor와 최단 거리 계산
-predecessor, distance = nx.bellman_ford_predecessor_and_distance(G, source=1, weight='edge_attr')
+graph=graph_0
 
-# 결과 출력
-print("Predecessor:", predecessor)
-print("Distance:", distance)
+graph_1,_,x_1=Data_Processor.compute_bellman_ford_step(graph=graph,source_id=source_id)
+for node, data in graph_1.nodes(data=True):
+    print(f"Node {node}: x = {data.get('x')}")
+
+
+# for u,v,data in graph.edges(data=True):
+#     print(f"Edge ({u}, {v}): edge_attr = {data.get('edge_attr')}")
+
+# graph_0,_,x_0=Data_Processor.compute_bellman_ford_step(graph=graph,init=True,source_id=source_id)
+# for t in range(N):
+#     graph_t,_,x_t=Data_Processor.compute_bellman_ford_step(graph=graph,source_id=source_id)
+#     print(x_t)
+#     graph=graph_t

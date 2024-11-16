@@ -19,7 +19,7 @@ torch.backends.cudnn.benchmark = False
 
 train_graph_list=Data_Generator.generate_graph_list(graph_num=100,node_num=20,edge_probability=0.5)
 test_graph_list=[]
-for node_num in [20,30,50]:
-    test_graph_list=test_graph_list+Data_Generator.generate_graph_list(graph_num=10,node_num=node_num,edge_probability=0.5)
+for node_num in [20,50,100]:
+    test_graph_list=test_graph_list+Data_Generator.generate_graph_list(graph_num=5,node_num=node_num,edge_probability=0.5)
 Data_Loader.save_pickle(data=train_graph_list,file_name="train_graph_list")
-Data_Loader.save_pickle(data=train_graph_list,file_name="test_graph_list")
+Data_Loader.save_pickle(data=test_graph_list,file_name="test_graph_list")

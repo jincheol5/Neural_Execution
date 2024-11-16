@@ -294,7 +294,7 @@ class Data_Processor:
             copy_graph.nodes[source_id]['x'][0]=0.0
             step_x_label[source_id][0]=0.0
 
-            return copy_graph, step_x_label, step_predecessor_label
+            return copy_graph, step_predecessor_label, step_x_label 
 
         for node_idx in graph.nodes():
             current_length=graph.nodes[node_idx]['x'][0] # 현재 노드의 최단 경로 길이
