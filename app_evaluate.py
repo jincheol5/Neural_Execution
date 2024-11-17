@@ -20,12 +20,13 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 ### Load data
-test_graph_list=Data_Loader.load_pickle(file_name="test_graph_list")
+train_graph_list_dict=Data_Loader.load_pickle(file_name="train_graph_list_dict")
+# test_graph_list_dict=Data_Loader.load_pickle(file_name="test_graph_list_dict")
 model_trainer=Model_Trainer()
 
 ### BFS
 model_file_name="neural_execution_bfs"
-model_trainer.evaluate_bfs(test_graph_list=test_graph_list,model_file_name=model_file_name,hidden_dim=32)
+model_trainer.evaluate_bfs(test_graph_list_dict=train_graph_list_dict,model_file_name="neural_execution_bfs",hidden_dim=32)
 
 ### Bellman-Ford
 # model_file_name="neural_execution_bf_distance"
