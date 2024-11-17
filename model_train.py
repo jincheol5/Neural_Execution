@@ -112,7 +112,7 @@ class Model_Trainer:
 
                         # get model output
                         output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
-                        h=output['h'] # h=(N,hidden_dim)
+                        h=output['h'].detach() # h=(N,hidden_dim)
                         y=output['y'] # y=(N,1)
                         tau=output['tau'] # tau=(1,1)
 
