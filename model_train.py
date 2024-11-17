@@ -77,7 +77,7 @@ class Model_Trainer:
         save_path=os.path.join(os.getcwd(),"inference",file_name)
         torch.save(self.model.state_dict(),save_path)
     
-    def train_bfs(self,train_graph_list,hidden_dim=32,lr=0.01,epochs=10):
+    def train_bfs(self,train_graph_list_dict,val_graph_list_dict,hidden_dim=32,lr=0.01,epochs=10):
         optimizer=torch.optim.Adam(self.model.parameters(), lr=lr)
         criterion = BCEWithLogitsLoss()
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -85,49 +85,52 @@ class Model_Trainer:
         self.model.train()
 
         for epoch in tqdm(range(epochs),desc="Training..."):
-            for train_graph in train_graph_list:
-                data=from_networkx(train_graph) # nx graph to pyg Data
-                N=data.x.size(0)
-                edge_index=data.edge_index.to(device)
-                edge_attr=data.edge_attr.to(device)
+            for _,train_graph_list  in train_graph_list_dict.items():
+                for train_graph in train_graph_list:
+                    data=from_networkx(train_graph) # nx graph to pyg Data
+                    N=data.x.size(0)
+                    edge_index=data.edge_index.to(device)
+                    edge_attr=data.edge_attr.to(device)
 
-                source_id=random.randint(0, N - 1)
+                    source_id=random.randint(0, N - 1)
 
-                h=torch.zeros((N,hidden_dim), dtype=torch.float32).detach().to(device) # h=(N,hidden_dim)
-                last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device)
+                    h=torch.zeros((N,hidden_dim), dtype=torch.float32).detach().to(device) # h=(N,hidden_dim)
+                    last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device)
 
-                # initialize step
-                graph_0,x_0=Data_Processor.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
-                x=x_0.detach().to(device) 
-                graph_t=graph_0
+                    # initialize step
+                    graph_0,x_0=Data_Processor.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
+                    x=x_0.detach().to(device) 
+                    graph_t=graph_0
 
-                t=0
-                while t < N:
-                    optimizer.zero_grad()
-                    graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
-                    x_t=x_t.to(device)
+                    t=0
+                    while t < N:
+                        optimizer.zero_grad()
+                        graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
+                        x_t=x_t.to(device)
 
-                    # get model output
-                    output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
-                    h=output['h'].detach() # h=(N,hidden_dim)
-                    y=output['y'] # y=(N,1)
-                    tau=output['tau'] # tau=(1,1)
+                        # get model output
+                        output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                        h=output['h'].detach() # h=(N,hidden_dim)
+                        y=output['y'] # y=(N,1)
+                        tau=output['tau'] # tau=(1,1)
 
-                    # set terminate label at t 
-                    tau_t=self.compare_tensors(tensor1=last_x_label,tensor2=x_t).to(device) # 마지막 step이면 0.0 아니면 1.0
+                        # set terminate label at t 
+                        tau_t=self.compare_tensors(tensor1=last_x_label,tensor2=x_t).to(device) # 마지막 step이면 0.0 아니면 1.0
 
-                    # 손실 함수 계산 및 오류 역전파 수행
-                    x_loss=criterion(y.squeeze(),x_t.squeeze())
-                    terminate_loss=criterion(tau.squeeze(),tau_t.squeeze())
-                    total_loss=x_loss+terminate_loss
-                    total_loss.backward()
-                    optimizer.step()
+                        # 손실 함수 계산 및 오류 역전파 수행
+                        x_loss=criterion(y.squeeze(),x_t.squeeze())
+                        terminate_loss=criterion(tau.squeeze(),tau_t.squeeze())
+                        total_loss=x_loss+terminate_loss
+                        total_loss.backward()
+                        optimizer.step()
 
-                    # 마지막 step인 경우 종료
-                    if tau_t.item()==0.0:
-                        break
-                    x=x_t
-                    t+=1
+                        # 마지막 step인 경우 종료
+                        if tau_t.item()==0.0:
+                            break
+                        x=x_t
+                        t+=1
+            print(f"{epoch} epoch training is finished.")
+            self.validate_bfs(val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
 
     def train_bellman_ford(self,train_graph_list,hidden_dim=32,lr=0.01,epochs=10):
         optimizer=torch.optim.Adam(self.model.parameters(), lr=lr)
@@ -244,72 +247,72 @@ class Model_Trainer:
                     x=x_t
                     t+=1
 
-    def validate_bfs(self,val_graph_list,val_graph_type,hidden_dim=32):
+    def validate_bfs(self,val_graph_list_dict,hidden_dim=32):
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.to(device)
         self.model.eval()
         
-        step_acc_avg_list=[]
-        last_acc_list=[]
-
         with torch.no_grad():
-            for val_graph in tqdm(val_graph_list,desc="Evaluating..."):
-                step_acc_list=[]
+            for val_graph_type,val_graph_list in val_graph_list_dict.items():
+                step_acc_avg_list=[]
+                last_acc_list=[]
+                for val_graph in val_graph_list:
+                    step_acc_list=[]
 
-                data=from_networkx(val_graph) # nx graph to pyg Data
-                N=data.x.size(0)
-                edge_index=data.edge_index.to(device)
-                edge_attr=data.edge_attr.to(device)
+                    data=from_networkx(val_graph) # nx graph to pyg Data
+                    N=data.x.size(0)
+                    edge_index=data.edge_index.to(device)
+                    edge_attr=data.edge_attr.to(device)
 
-                source_id=random.randint(0, N - 1)
+                    source_id=random.randint(0, N - 1)
 
-                h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
-                last_x_label=Data_Processor.compute_reachability(graph=val_graph,source_id=source_id)
-                last_x_label=last_x_label.to(device)
+                    h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
+                    last_x_label=Data_Processor.compute_reachability(graph=val_graph,source_id=source_id)
+                    last_x_label=last_x_label.to(device)
 
-                # initialize step
-                graph_0,x_0=Data_Processor.compute_bfs_step(graph=val_graph,source_id=source_id,init=True)
-                x=x_0.to(device) 
-                graph_t=graph_0
+                    # initialize step
+                    graph_0,x_0=Data_Processor.compute_bfs_step(graph=val_graph,source_id=source_id,init=True)
+                    x=x_0.to(device) 
+                    graph_t=graph_0
 
-                last_y=torch.zeros_like(x).to(device)
-                t=0
-                while t < N:
-                    graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
-                    x_t=x_t.to(device)
+                    last_y=torch.zeros_like(x).to(device)
+                    t=0
+                    while t < N:
+                        graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
+                        x_t=x_t.to(device)
 
-                    # get model output
-                    output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
-                    # get and set h
-                    h=output['h'] # h=(N,hidden_dim)
-                    # get y, tau
-                    y=output['y'] # y=(N,1)
-                    cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
-                    tau=output['tau'] # tau=(1,1)
+                        # get model output
+                        output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                        # get and set h
+                        h=output['h'] # h=(N,hidden_dim)
+                        # get y, tau
+                        y=output['y'] # y=(N,1)
+                        cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
+                        tau=output['tau'] # tau=(1,1)
+                        
+                        # compute step accuracy
+                        step_acc=self.compute_bfs_accuracy(y=cls_y,label=x_t)
+                        step_acc_list.append(step_acc)
+
+                        # set x to cls_y and last_y to cls_y
+                        x=cls_y
+                        last_y=cls_y
+
+                        # terminate
+                        if tau.item()<=0.5:
+                            break
+                        t+=1
                     
-                    # compute step accuracy
-                    step_acc=self.compute_bfs_accuracy(y=cls_y,label=x_t)
-                    step_acc_list.append(step_acc)
+                    # compute step acc and last acc
+                    step_acc_avg=np.mean(step_acc_list)
+                    last_acc=self.compute_bfs_accuracy(y=last_y,label=last_x_label)
+                    step_acc_avg_list.append(step_acc_avg)
+                    last_acc_list.append(last_acc)
 
-                    # set x to cls_y and last_y to cls_y
-                    x=cls_y
-                    last_y=cls_y
+                print(f"Validate {val_graph_type} graph dataset total step_acc_avg: {np.mean(step_acc_avg_list):.2%} and total last_acc_avg: {np.mean(last_acc_list):.2%}")
+                print()
 
-                    # terminate
-                    if tau.item()<=0.5:
-                        break
-                    t+=1
-                
-                # compute step acc and last acc
-                step_acc_avg=np.mean(step_acc_list)
-                last_acc=self.compute_bfs_accuracy(y=last_y,label=last_x_label)
-                step_acc_avg_list.append(step_acc_avg)
-                last_acc_list.append(last_acc)
-
-        print(f"Validate {val_graph_type} graph dataset total step_acc_avg: {np.mean(step_acc_avg_list):.2%} and total last_acc_avg: {np.mean(last_acc_list):.2%}")
-        print()
-
-    def evaluate_bfs(self,test_graph_list,model_file_name,hidden_dim=32):
+    def evaluate_bfs(self,test_graph_list_dict,model_file_name,hidden_dim=32):
         model=BFS_Neural_Execution(hidden_dim=hidden_dim)
         load_path=os.path.join(os.getcwd(), "inference",model_file_name+".pt")
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -320,66 +323,67 @@ class Model_Trainer:
         acc_dict_list=[]
 
         with torch.no_grad():
-            for test_graph in tqdm(test_graph_list,desc="Evaluating..."):
-                step_acc_list=[]
+            for test_graph_type,test_graph_list in test_graph_list_dict.items():
+                step_acc_avg_list=[]
+                last_acc_list=[]
+                for test_graph in tqdm(test_graph_list,desc="Evaluating "+test_graph_type+" graph..."):
+                    step_acc_list=[]
 
-                data=from_networkx(test_graph) # nx graph to pyg Data
-                N=data.x.size(0)
-                edge_index=data.edge_index.to(device)
-                edge_attr=data.edge_attr.to(device)
+                    data=from_networkx(test_graph) # nx graph to pyg Data
+                    N=data.x.size(0)
+                    edge_index=data.edge_index.to(device)
+                    edge_attr=data.edge_attr.to(device)
 
-                source_id=random.randint(0, N - 1)
+                    source_id=random.randint(0, N - 1)
 
-                h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
-                last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
-                last_x_label=last_x_label.to(device)
+                    h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
+                    last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
+                    last_x_label=last_x_label.to(device)
 
-                # initialize step
-                graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
-                x=x_0.to(device) 
-                graph_t=graph_0
+                    # initialize step
+                    graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
+                    x=x_0.to(device) 
+                    graph_t=graph_0
 
-                last_y=torch.zeros_like(x).to(device)
-                t=0
-                while t < N:
-                    graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
-                    x_t=x_t.to(device)
+                    last_y=torch.zeros_like(x).to(device)
+                    t=0
+                    while t < N:
+                        graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
+                        x_t=x_t.to(device)
 
-                    # get model output
-                    output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
-                    # get and set h
-                    h=output['h'] # h=(N,hidden_dim)
-                    # get y, ter
-                    y=output['y'] # y=(N,1)
-                    cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
-                    tau=output['tau'] # tau=(1,1)
+                        # get model output
+                        output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
+                        # get and set h
+                        h=output['h'] # h=(N,hidden_dim)
+                        # get y, ter
+                        y=output['y'] # y=(N,1)
+                        cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
+                        tau=output['tau'] # tau=(1,1)
+                        
+                        # compute step accuracy
+                        step_acc=self.compute_bfs_accuracy(y=cls_y,label=x_t)
+                        step_acc_list.append(step_acc)
+
+                        # set x to cls_y and last_y to cls_y
+                        x=cls_y
+                        last_y=cls_y
+
+                        # terminate
+                        if tau.item()<=0.5:
+                            break
+                        t+=1
                     
-                    # compute step accuracy
-                    step_acc=self.compute_bfs_accuracy(y=cls_y,label=x_t)
-                    step_acc_list.append(step_acc)
+                    # compute step acc and last acc
+                    step_acc_avg=np.mean(step_acc_list)
+                    last_acc=self.compute_bfs_accuracy(y=last_y,label=last_x_label)
+                    acc_dict={}
+                    acc_dict['step_acc_avg']=step_acc_avg
+                    acc_dict['last_acc']=last_acc
+                    acc_dict_list.append(acc_dict)
 
-                    # set x to cls_y and last_y to cls_y
-                    x=cls_y
-                    last_y=cls_y
+                print(f"Evaluate {test_graph_type} graph step_acc_avg: {np.mean(step_acc_avg_list):.2%} and last_acc_avg: {np.mean(last_acc_list):.2%}")
+                print()
 
-                    # terminate
-                    if tau.item()<=0.5:
-                        break
-                    t+=1
-                
-                # compute step acc and last acc
-                step_acc_avg=np.mean(step_acc_list)
-                last_acc=self.compute_bfs_accuracy(y=last_y,label=last_x_label)
-                acc_dict={}
-                acc_dict['step_acc_avg']=step_acc_avg
-                acc_dict['last_acc']=last_acc
-                acc_dict_list.append(acc_dict)
-
-        k=0
-        for acc_dict in acc_dict_list:
-            k+=1
-            print(f"{k} test graph step_acc_avg: {acc_dict['step_acc_avg']:.2%} and last_acc: {acc_dict['last_acc']:.2%}")
-            print()
 
     def evaluate_bf(self,test_graph_list,model_file_name,hidden_dim=32):
         model=BF_Neural_Execution(hidden_dim=hidden_dim)
