@@ -28,7 +28,7 @@ model_trainer=Model_Trainer()
 model=BFS_Neural_Execution(hidden_dim=32)
 model_trainer.set_model(model=model)
 model_trainer.train_bfs(train_graph_list_dict=train_graph_list_dict,val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
-model_trainer.save_model_state_dict(model_name="neural_execution_bfs")
+# model_trainer.save_model_state_dict(model_name="neural_execution_bfs")
 
 ### Bellman-Ford distance
 # model=BF_Distance_Neural_Execution(hidden_dim=32)

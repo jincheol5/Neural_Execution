@@ -77,7 +77,7 @@ class Model_Trainer:
         save_path=os.path.join(os.getcwd(),"inference",file_name)
         torch.save(self.model.state_dict(),save_path)
     
-    def train_bfs(self,train_graph_list_dict,val_graph_list_dict,hidden_dim=32,lr=0.01,epochs=10):
+    def train_bfs(self,train_graph_list_dict,val_graph_list_dict,hidden_dim=32,lr=0.0005,epochs=10):
         optimizer=torch.optim.Adam(self.model.parameters(), lr=lr)
         criterion = BCEWithLogitsLoss()
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -94,23 +94,25 @@ class Model_Trainer:
 
                     source_id=random.randint(0, N - 1)
 
-                    h=torch.zeros((N,hidden_dim), dtype=torch.float32).detach().to(device) # h=(N,hidden_dim)
+                    # compute last x label
                     last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device)
 
                     # initialize step
+                    h_0=torch.zeros((N,hidden_dim), dtype=torch.float32) # h_0=(N,hidden_dim)
                     graph_0,x_0=Data_Processor.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
-                    x=x_0.detach().to(device) 
-                    graph_t=graph_0
+                    h=h_0.to(device)
+                    x=x_0.to(device)
+                    graph=graph_0
 
                     t=0
                     while t < N:
                         optimizer.zero_grad()
-                        graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph_t,source_id=source_id)
+                        graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph,source_id=source_id)
                         x_t=x_t.to(device)
 
                         # get model output
                         output=self.model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
-                        h=output['h'].detach() # h=(N,hidden_dim)
+                        h=output['h'] # h=(N,hidden_dim)
                         y=output['y'] # y=(N,1)
                         tau=output['tau'] # tau=(1,1)
 
@@ -127,6 +129,7 @@ class Model_Trainer:
                         # 마지막 step인 경우 종료
                         if tau_t.item()==0.0:
                             break
+                        graph=graph_t
                         x=x_t
                         t+=1
             print(f"{epoch+1} epoch training is finished.")
