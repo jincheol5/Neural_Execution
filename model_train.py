@@ -82,9 +82,9 @@ class Model_Trainer:
         criterion = BCEWithLogitsLoss()
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.to(device)
-        self.model.train()
 
         for epoch in tqdm(range(epochs),desc="Training..."):
+            self.model.train()
             for _,train_graph_list  in train_graph_list_dict.items():
                 for train_graph in train_graph_list:
                     data=from_networkx(train_graph) # nx graph to pyg Data
@@ -134,6 +134,7 @@ class Model_Trainer:
                         t+=1
             print(f"{epoch+1} epoch training is finished.")
             self.validate_bfs(val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
+
 
     def train_bellman_ford(self,train_graph_list,hidden_dim=32,lr=0.01,epochs=10):
         optimizer=torch.optim.Adam(self.model.parameters(), lr=lr)
