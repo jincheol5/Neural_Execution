@@ -131,7 +131,7 @@ class Model_Trainer:
                         x=x_t
                         t+=1
             print(f"{epoch+1} epoch training is finished.")
-            Model_Trainer.validate_bfs(val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
+            Model_Trainer.validate_bfs(model=model,val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
 
     @staticmethod
     def validate_bfs(model,val_graph_list_dict,hidden_dim=32):
