@@ -21,11 +21,11 @@ torch.backends.cudnn.benchmark = False
 
 ### Load data
 train_graph_list_dict=Data_Loader.load_pickle(file_name="train_graph_list_dict")
-# test_graph_list_dict=Data_Loader.load_pickle(file_name="test_graph_list_dict")
+test_graph_list_dict=Data_Loader.load_pickle(file_name="test_graph_list_dict")
 
 ### BFS
 model_file_name="neural_execution_bfs"
-Model_Trainer.evaluate_bfs(test_graph_list_dict=train_graph_list_dict,model_file_name="neural_execution_bfs",hidden_dim=32)
+Model_Trainer.evaluate_bfs(test_graph_list_dict=test_graph_list_dict,model_file_name="neural_execution_bfs",hidden_dim=32)
 
 ### Bellman-Ford
 # model_file_name="neural_execution_bf_distance"

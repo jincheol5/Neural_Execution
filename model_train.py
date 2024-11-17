@@ -222,8 +222,8 @@ class Model_Trainer:
                     edge_index=data.edge_index.to(device)
                     edge_attr=data.edge_attr.to(device)
 
-                    # source_id=random.randint(0, N - 1)
-                    source_id=0
+                    source_id=random.randint(0, N - 1)
+                    # source_id=0
 
                     h=torch.zeros((N,hidden_dim), dtype=torch.float32).to(device) # h=(N,hidden_dim)
                     last_x_label=Data_Processor.compute_reachability(graph=test_graph,source_id=source_id)
