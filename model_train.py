@@ -129,7 +129,7 @@ class Model_Trainer:
                             break
                         x=x_t
                         t+=1
-            print(f"{epoch} epoch training is finished.")
+            print(f"{epoch+1} epoch training is finished.")
             self.validate_bfs(val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
 
     def train_bellman_ford(self,train_graph_list,hidden_dim=32,lr=0.01,epochs=10):
@@ -320,8 +320,6 @@ class Model_Trainer:
         model.load_state_dict(torch.load(load_path))
         model.eval()
 
-        acc_dict_list=[]
-
         with torch.no_grad():
             for test_graph_type,test_graph_list in test_graph_list_dict.items():
                 step_acc_avg_list=[]
@@ -376,10 +374,8 @@ class Model_Trainer:
                     # compute step acc and last acc
                     step_acc_avg=np.mean(step_acc_list)
                     last_acc=self.compute_bfs_accuracy(y=last_y,label=last_x_label)
-                    acc_dict={}
-                    acc_dict['step_acc_avg']=step_acc_avg
-                    acc_dict['last_acc']=last_acc
-                    acc_dict_list.append(acc_dict)
+                    step_acc_avg_list.append(step_acc_avg)
+                    last_acc_list.append(last_acc)
 
                 print(f"Evaluate {test_graph_type} graph step_acc_avg: {np.mean(step_acc_avg_list):.2%} and last_acc_avg: {np.mean(last_acc_list):.2%}")
                 print()
