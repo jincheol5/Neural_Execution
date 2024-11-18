@@ -246,7 +246,7 @@ class Data_Processor:
             for src,tar in list(graph.edges()): # edge=(src,tar)
 
 
-                print(graph.nodes[src]['x'][0])
+                print(graph.nodes[src]['x'])
                 print(graph.edges[(src, tar)]['w'])
 
                 if graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]<graph.nodes[tar]['x'][0]:
