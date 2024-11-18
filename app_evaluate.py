@@ -20,7 +20,6 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 ### Load data
-train_graph_list_dict=Data_Loader.load_pickle(file_name="train_graph_list_dict")
 test_graph_list_dict_20=Data_Loader.load_pickle(file_name="test_graph_list_dict_20")
 test_graph_list_dict_30=Data_Loader.load_pickle(file_name="test_graph_list_dict_30")
 test_graph_list_dict_50=Data_Loader.load_pickle(file_name="test_graph_list_dict_50")
