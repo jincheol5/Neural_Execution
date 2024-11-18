@@ -56,7 +56,7 @@ class Model_Trainer:
             model.train()
             for _,train_graph_list  in train_graph_list_dict.items():
                 for train_graph in train_graph_list:
-                    data=from_networkx(train_graph) # nx graph to pyg Data
+                    data=from_networkx(train_graph,group_edge_attrs=['w']) # nx graph to pyg Data
                     N=data.x.size(0)
                     edge_index=data.edge_index.to(device)
                     edge_attr=data.edge_attr.to(device)
@@ -117,7 +117,7 @@ class Model_Trainer:
                 for val_graph in val_graph_list:
                     step_x_acc_list=[]
 
-                    data=from_networkx(val_graph) # nx graph to pyg Data
+                    data=from_networkx(val_graph,group_edge_attrs=['w']) # nx graph to pyg Data
                     N=data.x.size(0)
                     edge_index=data.edge_index.to(device)
                     edge_attr=data.edge_attr.to(device)
@@ -185,7 +185,7 @@ class Model_Trainer:
                 for test_graph in tqdm(test_graph_list,desc="Evaluating "+test_graph_type+" graph..."):
                     step_x_acc_list=[]
 
-                    data=from_networkx(test_graph) # nx graph to pyg Data
+                    data=from_networkx(test_graph,group_edge_attrs=['w']) # nx graph to pyg Data
                     N=data.x.size(0)
                     edge_index=data.edge_index.to(device)
                     edge_attr=data.edge_attr.to(device)
@@ -249,7 +249,7 @@ class Model_Trainer:
             model.train()
             for _,train_graph_list  in train_graph_list_dict.items():
                 for train_graph in train_graph_list:
-                    data=from_networkx(train_graph) # nx graph to pyg Data
+                    data=from_networkx(train_graph,group_edge_attrs=['w']) # nx graph to pyg Data
                     N=data.x.size(0)
                     edge_index=data.edge_index.to(device)
                     edge_attr=data.edge_attr.to(device)
@@ -311,7 +311,7 @@ class Model_Trainer:
                 for val_graph in val_graph_list:
                     step_x_acc_list=[]
 
-                    data=from_networkx(val_graph) # nx graph to pyg Data
+                    data=from_networkx(val_graph,group_edge_attrs=['w']) # nx graph to pyg Data
                     N=data.x.size(0)
                     edge_index=data.edge_index.to(device)
                     edge_attr=data.edge_attr.to(device)
@@ -376,7 +376,7 @@ class Model_Trainer:
                 for test_graph in tqdm(test_graph_list,desc="Evaluating "+test_graph_type+" graph..."):
                     step_x_acc_list=[]
 
-                    data=from_networkx(test_graph) # nx graph to pyg Data
+                    data=from_networkx(test_graph,group_edge_attrs=['w']) # nx graph to pyg Data
                     N=data.x.size(0)
                     edge_index=data.edge_index.to(device)
                     edge_attr=data.edge_attr.to(device)
