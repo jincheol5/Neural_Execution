@@ -240,8 +240,6 @@ class Data_Processor:
             graph.nodes[source_id]['x'][0]=0.0
             x_t[source_id][0]=0.0
 
-            print(x_t)
-
             return graph,p_t,x_t
         else:
             graph_t=copy.deepcopy(graph) # edge 순서에 영향 받지 않기 위해 복사 -> edge 순서 상관없이 각 단계 결과값 예측 가능
@@ -251,6 +249,8 @@ class Data_Processor:
                     x_t[tar][0]=graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]
                     graph_t.nodes[tar]['p'][0]=src
                     p_t[tar][0]=src
+
+            print(x_t)
 
             return graph_t,p_t,x_t
 
