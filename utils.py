@@ -17,8 +17,8 @@ class Data_Generator:
 
     @staticmethod
     def set_edge_weight(graph):
-        for source,target in graph.edges(): 
-            graph[source][target]['w'] = [random.uniform(0.2, 1)] 
+        for src,tar in list(graph.edges()): 
+            graph[src][tar]['w'] = random.uniform(0.2, 1) 
         return graph
 
     @staticmethod
@@ -27,8 +27,8 @@ class Data_Generator:
         graph=Data_Generator.set_self_loop(graph=graph)
         graph=Data_Generator.set_edge_weight(graph=graph)
         for node_idx in graph.nodes():
-            graph.nodes[node_idx]['x']=[0.0]
-            graph.nodes[node_idx]['p']=[node_idx]
+            graph.nodes[node_idx]['x']=0.0
+            graph.nodes[node_idx]['p']=node_idx
         return graph
 
     @staticmethod
@@ -191,26 +191,26 @@ class Data_Processor:
     @staticmethod
     def compute_bfs_step(graph,source_id=0,init=False):
         N=graph.number_of_nodes()
-        x_t=torch.zeros((N,1),dtype=torch.float32)
+        x_t=torch.zeros((N,),dtype=torch.float32)
         for idx in range(N):
-            x_t[idx][0]=graph.nodes[idx]['x'][0]
+            x_t[idx]=graph.nodes[idx]['x']
 
         if init:
             for idx in range(N):
-                graph.nodes[idx]['x'][0]=0.0
-                x_t[idx][0]=0.0
-            graph.nodes[source_id]['x'][0]=1.0
-            x_t[source_id][0]=1.0
+                graph.nodes[idx]['x']=0.0
+                x_t[idx]=0.0
+            graph.nodes[source_id]['x']=1.0
+            x_t[source_id]=1.0
 
             return graph,x_t
         else:
             graph_t=copy.deepcopy(graph) # 순회 내에서 업데이트 결과가 이후 결과에 영향을 미치지 않도록 복사 -> edge 순서 관계없이 각 단계 결과값 예측 가능
             for idx in range(N):
-                if graph.nodes[idx]['x'][0] == 1.0:
+                if graph.nodes[idx]['x'] == 1.0:
                     for neighbor in graph.neighbors(idx):
-                        if graph.nodes[neighbor]['x'][0] == 0.0:
-                            graph_t.nodes[neighbor]['x'][0] = 1.0
-                            x_t[neighbor][0]=1.0
+                        if graph.nodes[neighbor]['x'] == 0.0:
+                            graph_t.nodes[neighbor]['x'] = 1.0
+                            x_t[neighbor]=1.0
 
             return graph_t,x_t
 
