@@ -257,7 +257,8 @@ class Model_Trainer:
                     source_id=random.randint(0, N - 1)
 
                     # compute last x label
-                    _,last_x_label=Data_Processor.compute_shortest_path_and_predecessor(graph=train_graph,source_id=source_id).to(device)
+                    _,last_x_label=Data_Processor.compute_shortest_path_and_predecessor(graph=train_graph,source_id=source_id)
+                    last_x_label=last_x_label.to(device)
 
                     # initialize step
                     h_0=torch.zeros((N,hidden_dim), dtype=torch.float32) # h_0=(N,hidden_dim)
