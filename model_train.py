@@ -353,7 +353,7 @@ class Model_Trainer:
 
                     # compute step acc and last acc
                     step_x_acc_avg=np.mean(step_x_acc_list)
-                    last_x_acc=Model_Trainer.compute_bf_distance_accuracy(y=x,label=last_x_label)
+                    last_x_acc=Model_Trainer.compute_bf_distance_accuracy(dist=x,dist_label=last_x_label)
                     step_x_acc_avg_list.append(step_x_acc_avg)
                     last_x_acc_list.append(last_x_acc)
 
@@ -404,7 +404,7 @@ class Model_Trainer:
                         tau=output['tau'] # tau=(1,1)
 
                         # compute step accuracy
-                        step_x_acc=Model_Trainer.compute_bf_distance_accuracy(y=dist,label=x_t)
+                        step_x_acc=Model_Trainer.compute_bf_distance_accuracy(dist=dist,dist_label=x_t)
                         step_x_acc_list.append(step_x_acc)
 
                         # set graph and x
@@ -418,7 +418,7 @@ class Model_Trainer:
 
                     # compute step acc and last acc
                     step_x_acc_avg=np.mean(step_x_acc_list)
-                    last_x_acc=Model_Trainer.compute_bf_distance_accuracy(y=dist,label=x_t)
+                    last_x_acc=Model_Trainer.compute_bf_distance_accuracy(dist=x,dist_label=last_x_label)
                     step_x_acc_avg_list.append(step_x_acc_avg)
                     last_x_acc_list.append(last_x_acc)
 
