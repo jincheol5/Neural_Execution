@@ -249,42 +249,6 @@ class Data_Processor:
         return copy_graph, step_x_label
 
     @staticmethod
-    def compute_reachability(graph,source_id):
-        nodes=list(graph.nodes())
-        result_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # result_tensor=(N,1)
-
-        for tar in nodes:
-            if nx.has_path(graph,source=source_id,target=tar):
-                result_tensor[tar][0]=1.0
-
-        return result_tensor
-    
-    @staticmethod
-    def convert_edge_attr_to_float(graph): # single_source_dijkstra_path_length() 함수를 위한 edge_attr 값 처리
-        for u, v, data in graph.edges(data=True):
-            if isinstance(data['edge_attr'], list) and len(data['edge_attr']) > 0:
-                data['weight'] = float(data['edge_attr'][0])  # 리스트의 첫 번째 값을 실수형으로 변환하여 'weight'에 저장
-
-    @staticmethod
-    def compute_shortest_path_and_predecessor(graph,source_id):
-        nodes=list(graph.nodes())
-        predecessor_tensor=torch.zeros((len(nodes),1), dtype=torch.int) # predecessor_tensor=(N,1)
-        distance_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # distance_tensor=(N,1)
-
-        Data_Processor.convert_edge_attr_to_float(graph)
-
-        predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='weight') # 연결되지 않은 노드=key도 없음, source 노드=key는 있지만 value=[]
-        predecessor_dic[source_id]=[source_id]
-
-        for tar in nodes:
-            if tar in predecessor_dic:
-                predecessor_tensor[tar][0]=predecessor_dic[tar][0]
-                distance_tensor[tar][0]=distance_dic[tar]
-            else:
-                predecessor_tensor[tar][0]=tar
-        return predecessor_tensor,distance_tensor
-
-    @staticmethod
     def compute_bellman_ford_step(graph,init=False,source_id=0):
         copy_graph=copy.deepcopy(graph)
         step_predecessor_label=torch.zeros((len(graph.nodes()),1),dtype=torch.int) # step_predecessor_label=(N,1)
@@ -324,6 +288,42 @@ class Data_Processor:
                 copy_graph.nodes[node_idx]['p'][0] = prev
 
         return copy_graph, step_predecessor_label, step_x_label
+
+    @staticmethod
+    def compute_reachability(graph,source_id):
+        nodes=list(graph.nodes())
+        result_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # result_tensor=(N,1)
+
+        for tar in nodes:
+            if nx.has_path(graph,source=source_id,target=tar):
+                result_tensor[tar][0]=1.0
+
+        return result_tensor
+    
+    @staticmethod
+    def convert_edge_attr_to_float(graph): # single_source_dijkstra_path_length() 함수를 위한 edge_attr 값 처리
+        for u, v, data in graph.edges(data=True):
+            if isinstance(data['edge_attr'], list) and len(data['edge_attr']) > 0:
+                data['weight'] = float(data['edge_attr'][0])  # 리스트의 첫 번째 값을 실수형으로 변환하여 'weight'에 저장
+
+    @staticmethod
+    def compute_shortest_path_and_predecessor(graph,source_id):
+        nodes=list(graph.nodes())
+        predecessor_tensor=torch.zeros((len(nodes),1), dtype=torch.int) # predecessor_tensor=(N,1)
+        distance_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # distance_tensor=(N,1)
+
+        Data_Processor.convert_edge_attr_to_float(graph)
+
+        predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='weight') # 연결되지 않은 노드=key도 없음, source 노드=key는 있지만 value=[]
+        predecessor_dic[source_id]=[source_id]
+
+        for tar in nodes:
+            if tar in predecessor_dic:
+                predecessor_tensor[tar][0]=predecessor_dic[tar][0]
+                distance_tensor[tar][0]=distance_dic[tar]
+            else:
+                predecessor_tensor[tar][0]=tar
+        return predecessor_tensor,distance_tensor
 
 class Data_Analysis:
     @staticmethod
