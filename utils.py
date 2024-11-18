@@ -18,7 +18,7 @@ class Data_Generator:
     @staticmethod
     def set_edge_weight(graph):
         for source,target in graph.edges(): 
-            graph[source][target]['edge_attr'] = [random.uniform(0.2, 1)] 
+            graph[source][target]['w'] = [random.uniform(0.2, 1)] 
         return graph
 
     @staticmethod
@@ -151,46 +151,6 @@ class Data_Generator:
             train_graph=Data_Generator.set_graph(graph=train_graph)
         return graph_list
 
-    @staticmethod
-    def generate_test_graph_for_check_bfs():
-        graph=nx.Graph() # undirected graph
-        graph.add_nodes_from([0,1,2,3,4]) 
-        graph.add_edges_from([(0,2), (0,3)])
-        graph=Data_Generator.set_graph(graph=graph)
-        return graph
-    
-    @staticmethod
-    def generate_test_graph_for_check_bellman_ford():
-        graph=nx.Graph() # undirected graph
-        graph.add_nodes_from([0,1,2,3,4,5]) 
-        graph.add_edges_from([(0,1), (0,2), (1,2), (1,3), (2,4), (3,5), (4,1), (4,3), (4,5)])
-        graph=Data_Generator.set_self_loop(graph=graph)
-        
-        # set edge weight
-        graph[0][1]['edge_attr'] = [0.6]
-        graph[0][2]['edge_attr'] = [0.2]
-        graph[1][2]['edge_attr'] = [0.2]
-        graph[1][3]['edge_attr'] = [0.2]
-        graph[2][4]['edge_attr'] = [0.1]
-        graph[3][5]['edge_attr'] = [0.2]
-        graph[4][1]['edge_attr'] = [0.1]  
-        graph[4][3]['edge_attr'] = [0.3]
-        graph[4][5]['edge_attr'] = [0.4]
-
-        graph[0][0]['edge_attr'] = [0.0]
-        graph[1][1]['edge_attr'] = [0.0]
-        graph[2][2]['edge_attr'] = [0.0]
-        graph[3][3]['edge_attr'] = [0.0]
-        graph[4][4]['edge_attr'] = [0.0]
-        graph[5][5]['edge_attr'] = [0.0]
-
-        # set x feature
-        for node_idx in graph.nodes():
-            graph.nodes[node_idx]['x']=[0.0]
-            graph.nodes[node_idx]['p']=[node_idx]
-
-        return graph
-
 
 class Data_Loader:
     pickle_path=os.path.join(os.getcwd(),'data')
@@ -227,67 +187,70 @@ class Data_Loader:
 
 
 class Data_Processor:
+    
     @staticmethod
-    def compute_bfs_step(graph,init=False,source_id=0):
-        copy_graph=copy.deepcopy(graph)
-        step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # step_x_label=(N,1)
-        for node_idx in graph.nodes():
-            step_x_label[node_idx][0]=graph.nodes[node_idx]['x'][0] 
+    def compute_bfs_step(graph,source_id=0,init=False):
+        N=graph.number_of_nodes()
+        x_t=torch.zeros((N,1),dtype=torch.float32)
+        for idx in range(N):
+            x_t[idx][0]=graph.nodes[idx]['x'][0]
 
         if init:
-            copy_graph.nodes[source_id]['x'][0]=1.0
-            step_x_label[source_id][0]=1.0
-            return copy_graph, step_x_label
+            for idx in range(N):
+                graph.nodes[idx]['x'][0]=0.0
+                x_t[idx][0]=0.0
+            graph.nodes[source_id]['x'][0]=1.0
+            x_t[source_id][0]=1.0
 
-        for node_idx in graph.nodes():
-            if graph.nodes[node_idx]['x'][0] == 1.0:
-                for neighbor in graph.neighbors(node_idx):
-                    if graph.nodes[neighbor]['x'][0] == 0.0:
-                        copy_graph.nodes[neighbor]['x'][0] = 1.0
-                        step_x_label[neighbor][0]=1.0
+            return graph,x_t
+        else:
+            graph_t=copy.deepcopy(graph) # 순회 내에서 업데이트 결과가 이후 결과에 영향을 미치지 않도록 복사 -> edge 순서 관계없이 각 단계 결과값 예측 가능
+            for idx in range(N):
+                if graph.nodes[idx]['x'][0] == 1.0:
+                    for neighbor in graph.neighbors(idx):
+                        if graph.nodes[neighbor]['x'][0] == 0.0:
+                            graph_t.nodes[neighbor]['x'][0] = 1.0
+                            x_t[neighbor][0]=1.0
 
-        return copy_graph, step_x_label
+            return graph_t,x_t
 
     @staticmethod
-    def compute_bellman_ford_step(graph,init=False,source_id=0):
-        copy_graph=copy.deepcopy(graph)
-        step_predecessor_label=torch.zeros((len(graph.nodes()),1),dtype=torch.int) # step_predecessor_label=(N,1)
-        step_x_label=torch.zeros((len(graph.nodes()),1),dtype=torch.float32) # step_x_label=(N,1)
-        for node_idx in graph.nodes():
-            step_x_label[node_idx][0]=graph.nodes[node_idx]['x'][0] 
-            step_predecessor_label[node_idx][0]=graph.nodes[node_idx]['p'][0]
-        
+    def compute_bellman_ford_step(graph,source_id=0,init=False):
+        N=graph.number_of_nodes()
+        x_t=torch.zeros((N,1),dtype=torch.float32)
+        p_t=torch.zeros((N,1),dtype=torch.int)
+        for idx in range(N):
+            x_t[idx][0]=graph.nodes[idx]['x'][0]
+            p_t[idx][0]=graph.nodes[idx]['p'][0]
+
         if init:
+            # compute longest distance
+            copy_graph=copy.deepcopy(graph)
             Data_Processor.convert_edge_attr_to_float(copy_graph)
             _, distance_dic=nx.bellman_ford_predecessor_and_distance(G=copy_graph, source=source_id, weight='weight')
-            longest_shortest_path_length=max(distance_dic.values())
-            copy_graph.graph['longest_distance']=longest_shortest_path_length+1
+            longest_shortest_path_distance=max(distance_dic.values())
+            longest_shortest_path_distance+=1
 
-            # node들의 x feature 값들을 longest_shortest_path_length+1 값으로 초기화
-            for node_idx in graph.nodes():
-                copy_graph.nodes[node_idx]['x'][0]=copy_graph.graph['longest_distance']
-                step_x_label[node_idx][0]=copy_graph.graph['longest_distance']
+            # initialize 
+            for idx in range(N):
+                graph.nodes[idx]['x'][0]=longest_shortest_path_distance
+                x_t[idx][0]=longest_shortest_path_distance
+                graph.nodes[idx]['p'][0]=idx
+                p_t[idx][0]=graph.nodes[idx]['p'][0]=idx
+            graph.nodes[source_id]['x'][0]=0.0
+            x_t[source_id][0]=0.0
 
-            # source node의 x, predecessor 값들을 초기화
-            copy_graph.nodes[source_id]['x'][0]=0.0
-            step_x_label[source_id][0]=0.0
+            return graph,p_t,x_t
+        else:
+            graph_t=copy.deepcopy(graph) # edge 순서에 영향 받지 않기 위해 복사 -> edge 순서 상관없이 각 단계 결과값 예측 가능
+            for src,tar in list(graph.edges()): # edge=(src,tar)
+                if graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]<graph.nodes[tar]['x'][0]:
+                    graph_t.nodes[tar]['x'][0]=graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]
+                    x_t[tar][0]=graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]
+                    graph_t.nodes[tar]['p'][0]=src
+                    p_t[tar][0]=src
 
-            return copy_graph, step_predecessor_label, step_x_label 
-
-        for node_idx in graph.nodes():
-            current_length=graph.nodes[node_idx]['x'][0] # 현재 노드의 최단 경로 길이
-            prev=-1 # 이전 (선행)노드를 나타냄
-            for neighbor_idx in graph.neighbors(node_idx):
-                edge_data = graph.get_edge_data(node_idx, neighbor_idx)
-                edge_weight = edge_data['edge_attr'][0]
-                if graph.nodes[neighbor_idx]['x'][0] + edge_weight < current_length:
-                    current_length = min(current_length, graph.nodes[neighbor_idx]['x'][0] + edge_weight)
-                    prev = neighbor_idx
-            if current_length < graph.nodes[node_idx]['x'][0]:
-                copy_graph.nodes[node_idx]['x'][0] = current_length
-                copy_graph.nodes[node_idx]['p'][0] = prev
-
-        return copy_graph, step_predecessor_label, step_x_label
+            return graph_t,p_t,x_t
 
     @staticmethod
     def compute_reachability(graph,source_id):
@@ -303,8 +266,8 @@ class Data_Processor:
     @staticmethod
     def convert_edge_attr_to_float(graph): # single_source_dijkstra_path_length() 함수를 위한 edge_attr 값 처리
         for u, v, data in graph.edges(data=True):
-            if isinstance(data['edge_attr'], list) and len(data['edge_attr']) > 0:
-                data['weight'] = float(data['edge_attr'][0])  # 리스트의 첫 번째 값을 실수형으로 변환하여 'weight'에 저장
+            if isinstance(data['w'], list) and len(data['w']) > 0:
+                data['w'] = float(data['w'][0])  # 리스트의 첫 번째 값을 실수형으로 변환하여 'w'에 저장
 
     @staticmethod
     def compute_shortest_path_and_predecessor(graph,source_id):
@@ -314,7 +277,7 @@ class Data_Processor:
 
         Data_Processor.convert_edge_attr_to_float(graph)
 
-        predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='weight') # 연결되지 않은 노드=key도 없음, source 노드=key는 있지만 value=[]
+        predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='w') # 연결되지 않은 노드=key도 없음, source 노드=key는 있지만 value=[]
         predecessor_dic[source_id]=[source_id]
 
         for tar in nodes:
@@ -324,28 +287,3 @@ class Data_Processor:
             else:
                 predecessor_tensor[tar][0]=tar
         return predecessor_tensor,distance_tensor
-
-class Data_Analysis:
-    @staticmethod
-    def get_reachability_ratio(graph: nx.Graph):
-        ### graph 내에서 reachability 비율이 50%에 가까운 상위 10개의 node 정보 반환
-
-        reachability_data = []
-        for source in graph.nodes():
-            reachable_nodes = nx.single_source_shortest_path_length(graph, source).keys() # source 노드에서 도달 가능한 노드 집합 계산 (무방향 그래프)
-            total_nodes = len(graph)
-            if total_nodes > 0:
-                reachability_ratio = len(reachable_nodes)/total_nodes # reachability 비율 계산
-            else:
-                reachability_ratio = 0.0
-            reachability_data.append((source, reachability_ratio))
-
-        reachability_df = pd.DataFrame(reachability_data, columns=['source', 'reachability_ratio'])
-
-        # 도달 가능성 비율이 50%에 가까운 source 상위 10개 선택
-        reachability_df['distance_to_50'] = np.abs(reachability_df['reachability_ratio'] - 0.5)
-        top_10_sources = reachability_df.nsmallest(10, 'distance_to_50')[['source', 'reachability_ratio']] 
-
-        result_dict = dict(zip(top_10_sources['source'], top_10_sources['reachability_ratio']))
-
-        return result_dict
