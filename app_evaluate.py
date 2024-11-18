@@ -28,11 +28,24 @@ test_graph_list_dict_50=Data_Loader.load_pickle(file_name="test_graph_list_dict_
 ### BFS
 # model_file_name="neural_execution_bfs"
 # Model_Trainer.evaluate_bfs(test_graph_list_dict=test_graph_list_dict_20,model_file_name=model_file_name,hidden_dim=32)
+# print("Finish to evaluate test_graph_list_dict_20.")
+# print()
 # Model_Trainer.evaluate_bfs(test_graph_list_dict=test_graph_list_dict_30,model_file_name=model_file_name,hidden_dim=32)
+# print("Finish to evaluate test_graph_list_dict_30.")
+# print()
 # Model_Trainer.evaluate_bfs(test_graph_list_dict=test_graph_list_dict_50,model_file_name=model_file_name,hidden_dim=32)
+# print("Finish to evaluate test_graph_list_dict_50.")
+# print()
+
 
 ### Bellman-Ford
 model_file_name="neural_execution_bf_distance"
 Model_Trainer.evaluate_bf_distance(test_graph_list_dict=test_graph_list_dict_20,model_file_name=model_file_name,hidden_dim=32)
+print("Finish to evaluate test_graph_list_dict_20.")
+print()
 Model_Trainer.evaluate_bf_distance(test_graph_list_dict=test_graph_list_dict_30,model_file_name=model_file_name,hidden_dim=32)
+print("Finish to evaluate test_graph_list_dict_30.")
+print()
 Model_Trainer.evaluate_bf_distance(test_graph_list_dict=test_graph_list_dict_50,model_file_name=model_file_name,hidden_dim=32)
+print("Finish to evaluate test_graph_list_dict_50.")
+print()
