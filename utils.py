@@ -227,7 +227,7 @@ class Data_Processor:
             # compute longest distance
             copy_graph=copy.deepcopy(graph)
             Data_Processor.convert_edge_attr_to_float(copy_graph)
-            _, distance_dic=nx.bellman_ford_predecessor_and_distance(G=copy_graph, source=source_id, weight='weight')
+            _, distance_dic=nx.bellman_ford_predecessor_and_distance(G=copy_graph, source=source_id, weight='w')
             longest_shortest_path_distance=max(distance_dic.values())
             longest_shortest_path_distance+=1
 
@@ -246,7 +246,7 @@ class Data_Processor:
             for src,tar in list(graph.edges()): # edge=(src,tar)
 
                 print(graph.edges[(src, tar)]['w'])
-                
+
                 if graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]<graph.nodes[tar]['x'][0]:
                     graph_t.nodes[tar]['x'][0]=graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]
                     x_t[tar][0]=graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]
