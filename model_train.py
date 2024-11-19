@@ -33,11 +33,11 @@ class Model_Trainer:
     @staticmethod
     def compare_tensors(tensor1,tensor2):
         if torch.equal(tensor1, tensor2):
-            # 값이 동일하면 (1, 1) 형태의 0.0 텐서 반환
-            return torch.tensor([[0.0]])
+            # 값이 동일하면 (1,) 형태의 0.0 텐서 반환
+            return torch.tensor([0.0])
         else:
-            # 값이 다르면 (1, 1) 형태의 1.0 텐서 반환
-            return torch.tensor([[1.0]])
+            # 값이 다르면 (1,) 형태의 1.0 텐서 반환
+            return torch.tensor([1.0])
     
     @staticmethod
     def save_model_state_dict(model,model_name="model_parameter"):
@@ -64,29 +64,29 @@ class Model_Trainer:
                     source_id=random.randint(0, N - 1)
 
                     # compute last x label
-                    last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device)
+                    last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device) # last_x_label=(N,)
 
                     # initialize step
                     h_0=torch.zeros((N,hidden_dim), dtype=torch.float32) # h_0=(N,hidden_dim)
                     graph_0,x_0=Data_Processor.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
                     h=h_0.to(device)
-                    x=x_0.to(device)
+                    x=x_0.unsqueeze(-1).to(device) # x=(N,1)
                     graph=graph_0
 
                     t=0
                     while t < N:
                         optimizer.zero_grad()
                         graph_t,x_t=Data_Processor.compute_bfs_step(graph=graph,source_id=source_id)
-                        x_t=x_t.to(device)
+                        x_t=x_t.to(device) # x_t=(N,)
 
                         # get model output
                         output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
                         h=output['h'].detach() # h=(N,hidden_dim)
-                        y=output['y'] # y=(N,1)
-                        tau=output['tau'] # tau=(1,1)
+                        y=output['y'].squeeze(-1) # y=(N,)
+                        tau=output['tau'].squeeze(-1) # tau=(1,)
 
                         # set terminate label at t 
-                        tau_t=Model_Trainer.compare_tensors(tensor1=last_x_label,tensor2=x_t).to(device) # 마지막 step이면 0.0 아니면 1.0
+                        tau_t=Model_Trainer.compare_tensors(tensor1=last_x_label,tensor2=x_t).to(device) # tau_t=(N,), 마지막 step이면 0.0 아니면 1.0
 
                         # 손실 함수 계산 및 오류 역전파 수행
                         x_loss=criterion(y,x_t)
@@ -99,7 +99,7 @@ class Model_Trainer:
                         if tau_t.item()==0.0:
                             break
                         graph=graph_t
-                        x=x_t
+                        x=x_t.unsqueeze(-1)
                         t+=1
             print(f"{epoch+1} epoch training is finished.")
             Model_Trainer.validate_bfs(model=model,val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
@@ -130,7 +130,7 @@ class Model_Trainer:
 
                     # initialize step
                     graph_0,x_0=Data_Processor.compute_bfs_step(graph=val_graph,source_id=source_id,init=True)
-                    x=x_0.to(device) 
+                    x=x_0.unsqueeze(-1).to(device) 
                     graph=graph_0
 
                     t=0
@@ -143,9 +143,9 @@ class Model_Trainer:
                         # get and set h
                         h=output['h'] # h=(N,hidden_dim)
                         # get y, tau
-                        y=output['y'] # y=(N,1)
+                        y=output['y'].squeeze(-1) # y=(N,)
                         cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
-                        tau=output['tau'] # tau=(1,1)
+                        tau=output['tau'].squeeze(-1) # tau=(1,)
                         
                         # compute step accuracy
                         step_x_acc=Model_Trainer.compute_bfs_accuracy(y=cls_y,label=x_t)
@@ -153,7 +153,7 @@ class Model_Trainer:
 
                         # set graph and x
                         graph=graph_t
-                        x=cls_y
+                        x=cls_y.unsqueeze(-1)
 
                         # terminate
                         if tau.item()<=0.5:
@@ -162,7 +162,7 @@ class Model_Trainer:
 
                     # compute step acc and last acc
                     step_x_acc_avg=np.mean(step_x_acc_list)
-                    last_x_acc=Model_Trainer.compute_bfs_accuracy(y=x,label=last_x_label)
+                    last_x_acc=Model_Trainer.compute_bfs_accuracy(y=x.squeeze(-1),label=last_x_label)
                     step_x_acc_avg_list.append(step_x_acc_avg)
                     last_x_acc_list.append(last_x_acc)
 
@@ -198,7 +198,7 @@ class Model_Trainer:
 
                     # initialize step
                     graph_0,x_0=Data_Processor.compute_bfs_step(graph=test_graph,source_id=source_id,init=True)
-                    x=x_0.to(device) 
+                    x=x_0.unsqueeze(-1).to(device) 
                     graph=graph_0
 
                     t=0
@@ -211,9 +211,9 @@ class Model_Trainer:
                         # get and set h
                         h=output['h'] # h=(N,hidden_dim)
                         # get y, ter
-                        y=output['y'] # y=(N,1)
+                        y=output['y'].squeeze(-1) # y=(N,)
                         cls_y=(y > 0.5).float() # y 값을 1.0 or 0.0으로 변환, GPU로 유지
-                        tau=output['tau'] # tau=(1,1)
+                        tau=output['tau'].squeeze(-1) # tau=(1,)
                         
                         # compute step accuracy
                         step_x_acc=Model_Trainer.compute_bfs_accuracy(y=cls_y,label=x_t)
@@ -221,7 +221,7 @@ class Model_Trainer:
 
                         # set graph and x
                         graph=graph_t
-                        x=cls_y
+                        x=cls_y.unsqueeze(-1)
 
                         # terminate
                         if tau.item()<=0.5:
@@ -230,7 +230,7 @@ class Model_Trainer:
 
                     # compute step acc and last acc
                     step_x_acc_avg=np.mean(step_x_acc_list)
-                    last_x_acc=Model_Trainer.compute_bfs_accuracy(y=x,label=last_x_label)
+                    last_x_acc=Model_Trainer.compute_bfs_accuracy(y=x.squeeze(-1),label=last_x_label)
                     step_x_acc_avg_list.append(step_x_acc_avg)
                     last_x_acc_list.append(last_x_acc)
 
@@ -264,7 +264,7 @@ class Model_Trainer:
                     h_0=torch.zeros((N,hidden_dim), dtype=torch.float32) # h_0=(N,hidden_dim)
                     graph_0,_,x_0=Data_Processor.compute_bellman_ford_step(graph=train_graph,source_id=source_id,init=True)
                     h=h_0.to(device)
-                    x=x_0.to(device)
+                    x=x_0.unsqueeze(-1).to(device)
                     graph=graph_0
 
                     t=0
@@ -276,8 +276,8 @@ class Model_Trainer:
                         # get model output
                         output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
                         h=output['h'].detach() # h=(N,hidden_dim)
-                        dist=output['dist'] # dist=(N,1)
-                        tau=output['tau'] # tau=(1,1)
+                        dist=output['dist'].squeeze(-1) # dist=(N,)
+                        tau=output['tau'].squeeze(-1) # tau=(1,)
 
                         # set terminate label at t 
                         tau_t=Model_Trainer.compare_tensors(tensor1=last_x_label,tensor2=x_t).to(device) # 마지막 step이면 0.0 아니면 1.0
@@ -293,7 +293,7 @@ class Model_Trainer:
                         if tau_t.item()==0.0:
                             break
                         graph=graph_t
-                        x=x_t
+                        x=x_t.unsqueeze(-1)
                         t+=1
             print(f"{epoch+1} epoch training is finished.")
             Model_Trainer.validate_bf_distance(model=model,val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
@@ -324,7 +324,7 @@ class Model_Trainer:
 
                     # initialize step
                     graph_0,_,x_0=Data_Processor.compute_bellman_ford_step(graph=val_graph,source_id=source_id,init=True)
-                    x=x_0.to(device) 
+                    x=x_0.unsqueeze(-1).to(device) 
                     graph=graph_0
 
                     t=0
@@ -335,8 +335,8 @@ class Model_Trainer:
                         # get model output
                         output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
                         h=output['h'] # h=(N,hidden_dim)
-                        dist=output['dist'] # dist=(N,1)
-                        tau=output['tau'] # tau=(1,1)
+                        dist=output['dist'].squeeze(-1) # dist=(N,)
+                        tau=output['tau'].squeeze(-1) # tau=(1,)
 
                         # compute step accuracy
                         step_x_acc=Model_Trainer.compute_bf_distance_accuracy(dist=dist,dist_label=x_t)
@@ -344,7 +344,7 @@ class Model_Trainer:
 
                         # set graph and x
                         graph=graph_t
-                        x=dist
+                        x=dist.unsqueeze(-1)
 
                         # terminate
                         if tau.item()<=0.5:
@@ -353,7 +353,7 @@ class Model_Trainer:
 
                     # compute step acc and last acc
                     step_x_acc_avg=np.mean(step_x_acc_list)
-                    last_x_acc=Model_Trainer.compute_bf_distance_accuracy(dist=x,dist_label=last_x_label)
+                    last_x_acc=Model_Trainer.compute_bf_distance_accuracy(dist=x.squeeze(-1),dist_label=last_x_label)
                     step_x_acc_avg_list.append(step_x_acc_avg)
                     last_x_acc_list.append(last_x_acc)
 
@@ -389,7 +389,7 @@ class Model_Trainer:
 
                     # initialize step
                     graph_0,_,x_0=Data_Processor.compute_bellman_ford_step(graph=test_graph,source_id=source_id,init=True)
-                    x=x_0.to(device) 
+                    x=x_0.unsqueeze(-1).to(device) 
                     graph=graph_0
 
                     t=0
@@ -400,8 +400,8 @@ class Model_Trainer:
                         # get model output
                         output=model(x=x,edge_index=edge_index,edge_attr=edge_attr,pre_h=h)
                         h=output['h'] # h=(N,hidden_dim)
-                        dist=output['dist'] # y=(N,1)
-                        tau=output['tau'] # tau=(1,1)
+                        dist=output['dist'].squeeze(-1) # y=(N,)
+                        tau=output['tau'].squeeze(-1) # tau=(1,)
 
                         # compute step accuracy
                         step_x_acc=Model_Trainer.compute_bf_distance_accuracy(dist=dist,dist_label=x_t)
@@ -409,7 +409,7 @@ class Model_Trainer:
 
                         # set graph and x
                         graph=graph_t
-                        x=dist
+                        x=dist.unsqueeze(-1)
 
                         # terminate
                         if tau.item()<=0.5:
@@ -418,7 +418,7 @@ class Model_Trainer:
 
                     # compute step acc and last acc
                     step_x_acc_avg=np.mean(step_x_acc_list)
-                    last_x_acc=Model_Trainer.compute_bf_distance_accuracy(dist=x,dist_label=last_x_label)
+                    last_x_acc=Model_Trainer.compute_bf_distance_accuracy(dist=x.squeeze(-1),dist_label=last_x_label)
                     step_x_acc_avg_list.append(step_x_acc_avg)
                     last_x_acc_list.append(last_x_acc)
 

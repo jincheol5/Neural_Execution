@@ -217,76 +217,65 @@ class Data_Processor:
     @staticmethod
     def compute_bellman_ford_step(graph,source_id=0,init=False):
         N=graph.number_of_nodes()
-        x_t=torch.zeros((N,1),dtype=torch.float32)
-        p_t=torch.zeros((N,1),dtype=torch.int)
+        x_t=torch.zeros((N,),dtype=torch.float32)
+        p_t=torch.zeros((N,),dtype=torch.int)
         for idx in range(N):
-            x_t[idx][0]=graph.nodes[idx]['x'][0]
-            p_t[idx][0]=graph.nodes[idx]['p'][0]
+            x_t[idx]=graph.nodes[idx]['x']
+            p_t[idx]=graph.nodes[idx]['p']
 
         if init:
             # compute longest distance
             copy_graph=copy.deepcopy(graph)
-            Data_Processor.convert_edge_attr_to_float(copy_graph)
             _, distance_dic=nx.bellman_ford_predecessor_and_distance(G=copy_graph, source=source_id, weight='w')
             longest_shortest_path_distance=max(distance_dic.values())
             longest_shortest_path_distance+=1
 
             # initialize 
             for idx in range(N):
-                graph.nodes[idx]['x'][0]=longest_shortest_path_distance
-                x_t[idx][0]=longest_shortest_path_distance
-                graph.nodes[idx]['p'][0]=idx
-                p_t[idx][0]=graph.nodes[idx]['p'][0]=idx
-            graph.nodes[source_id]['x'][0]=0.0
-            x_t[source_id][0]=0.0
+                graph.nodes[idx]['x']=longest_shortest_path_distance
+                x_t[idx]=longest_shortest_path_distance
+                graph.nodes[idx]['p']=idx
+                p_t[idx]=graph.nodes[idx]['p']=idx
+            graph.nodes[source_id]['x']=0.0
+            x_t[source_id]=0.0
 
             return graph,p_t,x_t
         else:
             graph_t=copy.deepcopy(graph) # edge 순서에 영향 받지 않기 위해 복사 -> edge 순서 상관없이 각 단계 결과값 예측 가능
             for src,tar in list(graph.edges()): # edge=(src,tar)
-
-                print(graph.edges[(src, tar)]['w'])
-
-                if graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]<graph.nodes[tar]['x'][0]:
-                    graph_t.nodes[tar]['x'][0]=graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]
-                    x_t[tar][0]=graph.nodes[src]['x'][0]+graph.edges[(src, tar)]['w'][0]
-                    graph_t.nodes[tar]['p'][0]=src
-                    p_t[tar][0]=src
+                if graph.nodes[src]['x']+graph.edges[(src, tar)]['w']<graph.nodes[tar]['x']:
+                    graph_t.nodes[tar]['x']=graph.nodes[src]['x']+graph.edges[(src, tar)]['w']
+                    x_t[tar]=graph.nodes[src]['x']+graph.edges[(src, tar)]['w']
+                    graph_t.nodes[tar]['p']=src
+                    p_t[tar]=src
 
             return graph_t,p_t,x_t
 
     @staticmethod
     def compute_reachability(graph,source_id):
         nodes=list(graph.nodes())
-        result_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # result_tensor=(N,1)
+        result_tensor=torch.zeros((len(nodes),), dtype=torch.float32) # result_tensor=(N,1)
 
         for tar in nodes:
             if nx.has_path(graph,source=source_id,target=tar):
-                result_tensor[tar][0]=1.0
+                result_tensor[tar]=1.0
 
         return result_tensor
     
-    @staticmethod
-    def convert_edge_attr_to_float(graph): # single_source_dijkstra_path_length() 함수를 위한 edge_attr 값 처리
-        for u, v, data in graph.edges(data=True):
-            if isinstance(data['w'], list) and len(data['w']) > 0:
-                data['w'] = float(data['w'][0])  # 리스트의 첫 번째 값을 실수형으로 변환하여 'w'에 저장
 
     @staticmethod
     def compute_shortest_path_and_predecessor(graph,source_id):
         nodes=list(graph.nodes())
-        predecessor_tensor=torch.zeros((len(nodes),1), dtype=torch.int) # predecessor_tensor=(N,1)
-        distance_tensor=torch.zeros((len(nodes),1), dtype=torch.float32) # distance_tensor=(N,1)
-
-        Data_Processor.convert_edge_attr_to_float(graph)
+        predecessor_tensor=torch.zeros((len(nodes),), dtype=torch.int) # predecessor_tensor=(N,1)
+        distance_tensor=torch.zeros((len(nodes),), dtype=torch.float32) # distance_tensor=(N,1)
 
         predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='w') # 연결되지 않은 노드=key도 없음, source 노드=key는 있지만 value=[]
         predecessor_dic[source_id]=[source_id]
 
         for tar in nodes:
             if tar in predecessor_dic:
-                predecessor_tensor[tar][0]=predecessor_dic[tar][0]
-                distance_tensor[tar][0]=distance_dic[tar]
+                predecessor_tensor[tar]=predecessor_dic[tar][0]
+                distance_tensor[tar]=distance_dic[tar]
             else:
-                predecessor_tensor[tar][0]=tar
+                predecessor_tensor[tar]=tar
         return predecessor_tensor,distance_tensor
