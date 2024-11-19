@@ -36,4 +36,4 @@ model_trainer=Model_Trainer()
 
 ### Both (BFS + Bellman-Ford distance)
 model=BFS_BF_Distance_Neural_Execution(hidden_dim=32)
-Model_Trainer.train_bf_distance(model=model,train_graph_list_dict=train_graph_list_dict,val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
+Model_Trainer.train_bfs_bf_distance(model=model,train_graph_list_dict=train_graph_list_dict,val_graph_list_dict=val_graph_list_dict,hidden_dim=32)
