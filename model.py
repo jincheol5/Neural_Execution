@@ -171,10 +171,10 @@ class BFS_BF_Distance_Neural_Execution(torch.nn.Module):
         self.bf_terminator=BF_Terminator(hidden_dim)
         self.processor=MPNN_Processor(hidden_dim)
 
-    def forward(self, bfs_x,bf_x,pre_bfs_h,pre_bf_h,edge_index,edge_attr):
+    def forward(self, bfs_x,bf_x,bfs_pre_h,bf_pre_h,edge_index,edge_attr):
         output={}
-        bfs_z=self.bfs_encoder(x=bfs_x,h=pre_bfs_h)
-        bf_z=self.bf_encoder(x=bf_x,h=pre_bf_h)
+        bfs_z=self.bfs_encoder(x=bfs_x,h=bfs_pre_h)
+        bf_z=self.bf_encoder(x=bf_x,h=bf_pre_h)
 
         bfs_h=self.processor(z=bfs_z,edge_index=edge_index,edge_attr=edge_attr)
         bf_h=self.processor(z=bf_z,edge_index=edge_index,edge_attr=edge_attr)
