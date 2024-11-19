@@ -139,28 +139,6 @@ class BFS_Neural_Execution(torch.nn.Module):
 
         return output
 
-class BF_Neural_Execution(torch.nn.Module):
-    def __init__(self, hidden_dim, max_N):
-        super().__init__()
-        self.encoder=BF_Encoder(hidden_dim)
-        self.processor=MPNN_Processor(hidden_dim)
-        self.decoder=BF_Decoder(hidden_dim,max_N)
-        self.terminator=BF_Terminator(hidden_dim)
-
-    def forward(self, x,pre_h,edge_index,edge_attr):
-        output={}
-        z=self.encoder(x=x,h=pre_h)
-        h=self.processor(z=z,edge_index=edge_index,edge_attr=edge_attr)
-        prec,dist=self.decoder(z=z,h=h)
-        tau=self.terminator(h=h)
-
-        output['h']=h # h=(N,hidden_dim)
-        output['prec']=prec # prec=(N,N)
-        output['dist']=dist # dist=(N,1)
-        output['tau']=tau # tau=(1,1)
-
-        return output
-
 class BF_Distance_Neural_Execution(torch.nn.Module):
     def __init__(self, hidden_dim):
         super().__init__()
@@ -179,5 +157,39 @@ class BF_Distance_Neural_Execution(torch.nn.Module):
         output['h']=h # h=(N,hidden_dim)
         output['dist']=dist # dist=(N,1)
         output['tau']=tau # tau=(1,1)
+
+        return output
+
+class BFS_BF_Distance_Neural_Execution(torch.nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.bfs_encoder=BF_Encoder(hidden_dim)
+        self.bfs_decoder=BF_Distance_Decoder(hidden_dim)
+        self.bfs_terminator=BF_Terminator(hidden_dim)
+        self.bf_encoder=BF_Encoder(hidden_dim)
+        self.bf_decoder=BF_Distance_Decoder(hidden_dim)
+        self.bf_terminator=BF_Terminator(hidden_dim)
+        self.processor=MPNN_Processor(hidden_dim)
+
+    def forward(self, bfs_x,bf_x,pre_bfs_h,pre_bf_h,edge_index,edge_attr):
+        output={}
+        bfs_z=self.bfs_encoder(x=bfs_x,h=pre_bfs_h)
+        bf_z=self.bf_encoder(x=bf_x,h=pre_bf_h)
+
+        bfs_h=self.processor(z=bfs_z,edge_index=edge_index,edge_attr=edge_attr)
+        bf_h=self.processor(z=bf_z,edge_index=edge_index,edge_attr=edge_attr)
+
+        y=self.bfs_decoder(z=bfs_z,h=bfs_h)
+        dist=self.bf_decoder(z=bf_z,h=bf_h)
+
+        bfs_tau=self.bfs_terminator(h=bfs_h)
+        bf_tau=self.bf_terminator(h=bf_h)
+
+        output['bfs_h']=bfs_h # bfs_h=(N,hidden_dim)
+        output['bf_h']=bfs_h # bf_h=(N,hidden_dim)
+        output['y']=y # y=(N,1)
+        output['dist']=dist # dist=(N,1)
+        output['bfs_tau']=bfs_tau # bfs_tau=(1,1)
+        output['bf_tau']=bf_tau # bf_tau=(1,1)
 
         return output

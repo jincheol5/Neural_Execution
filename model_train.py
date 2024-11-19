@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.nn import BCEWithLogitsLoss,MSELoss
 from torch_geometric.utils.convert import from_networkx
 from utils import Data_Processor
-from model import BFS_Neural_Execution,BF_Distance_Neural_Execution
+from model import BFS_Neural_Execution,BF_Distance_Neural_Execution,BFS_BF_Distance_Neural_Execution
 
 
 
@@ -424,3 +424,81 @@ class Model_Trainer:
 
                 print(f"Evaluate {test_graph_type} graph step_acc_avg: {np.mean(step_x_acc_avg_list):.2%} and last_acc_avg: {np.mean(last_x_acc_list):.2%}")
                 print()
+    
+    @staticmethod
+    def train_bfs_bf_distance(model,train_graph_list_dict,val_graph_list_dict,hidden_dim=32,lr=0.0005,epochs=10):
+        optimizer=torch.optim.Adam(model.parameters(), lr=lr)
+        bfs_criterion=BCEWithLogitsLoss()
+        bf_dist_criterion = MSELoss()
+        tau_criterion=BCEWithLogitsLoss()
+        device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model.to(device)
+
+        for epoch in tqdm(range(epochs),desc="Training..."):
+            model.train()
+            for _,train_graph_list  in train_graph_list_dict.items():
+                for train_graph in train_graph_list:
+                    data=from_networkx(train_graph,group_edge_attrs=['w']) # nx graph to pyg Data
+                    N=data.x.size(0)
+                    edge_index=data.edge_index.to(device)
+                    edge_attr=data.edge_attr.to(device)
+
+                    source_id=random.randint(0, N - 1)
+
+                    # compute last x,dist label
+                    last_x_label=Data_Processor.compute_reachability(graph=train_graph,source_id=source_id).to(device) 
+                    _,last_dist_label=Data_Processor.compute_shortest_path_and_predecessor(graph=train_graph,source_id=source_id)
+                    last_dist_label=last_dist_label.to(device)
+
+
+                    # initialize step
+                    bfs_h_0=torch.zeros((N,hidden_dim), dtype=torch.float32) # h_0=(N,hidden_dim)
+                    bf_h_0=torch.zeros((N,hidden_dim), dtype=torch.float32) # h_0=(N,hidden_dim)
+                    bfs_graph_0,bfs_x_0=Data_Processor.compute_bfs_step(graph=train_graph,source_id=source_id,init=True)
+                    bf_graph_0,_,bf_x_0=Data_Processor.compute_bellman_ford_step(graph=train_graph,source_id=source_id,init=True)
+                    bfs_h=bfs_h_0.to(device)
+                    bf_h=bf_h_0.to(device)
+                    bfs_x=bfs_x_0.unsqueeze(-1).to(device)
+                    bf_x=bf_x_0.unsqueeze(-1).to(device)
+                    bfs_graph=bfs_graph_0
+                    bf_graph=bf_graph_0
+
+                    t=0
+                    while t < N:
+                        optimizer.zero_grad()
+                        bfs_graph_t,bfs_x_t=Data_Processor.compute_bfs_step(graph=bfs_graph,source_id=source_id)
+                        bf_graph_t,_,bf_x_t=Data_Processor.compute_bellman_ford_step(graph=bf_graph,source_id=source_id)
+                        bfs_x_t=bfs_x_t.to(device)
+                        bf_x_t=bf_x_t.to(device)
+
+                        # get model output
+                        output=model(bfs_x=bfs_x,bf_x=bf_x,edge_index=edge_index,edge_attr=edge_attr,bfs_pre_h=bfs_h,bf_pre_h=bf_h)
+                        bfs_h=output['bfs_h'].detach() # h=(N,hidden_dim)
+                        bf_h=output['bf_h'].detach() # h=(N,hidden_dim)
+                        y=output['y'].squeeze(-1) # dist=(N,)
+                        dist=output['dist'].squeeze(-1) # dist=(N,)
+                        bfs_tau=output['bfs_tau'].squeeze(-1) # tau=(1,)
+                        bf_tau=output['bf_tau'].squeeze(-1) # tau=(1,)
+
+                        # set terminate label at t 
+                        bfs_tau_t=Model_Trainer.compare_tensors(tensor1=last_x_label,tensor2=bfs_x_t).to(device) # 마지막 step이면 0.0 아니면 1.0
+                        bf_tau_t=Model_Trainer.compare_tensors(tensor1=last_dist_label,tensor2=bf_x_t).to(device) # 마지막 step이면 0.0 아니면 1.0
+
+                        # 손실 함수 계산 및 오류 역전파 수행
+                        y_loss=bfs_criterion(y,bfs_x_t)
+                        dist_loss=bf_dist_criterion(dist,bf_x_t)
+                        bfs_terminate_loss=tau_criterion(bfs_tau,bfs_tau_t)
+                        bf_terminate_loss=tau_criterion(bf_tau,bf_tau_t)
+                        total_loss=y_loss+dist_loss+bfs_terminate_loss+bf_terminate_loss
+                        total_loss.backward()
+                        optimizer.step()
+
+                        # 마지막 step인 경우 종료
+                        if bfs_tau_t.item()==0.0 and bf_tau_t.item()==0.0:
+                            break
+                        bfs_graph=bfs_graph_t
+                        bf_graph=bf_graph_t
+                        bfs_x=bfs_x_t.unsqueeze(-1)
+                        bf_x=bf_x_t.unsqueeze(-1)
+                        t+=1
+            print(f"{epoch+1} epoch training is finished.")
