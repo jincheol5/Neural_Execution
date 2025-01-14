@@ -3,7 +3,7 @@ import random
 import numpy as np
 import torch
 from utils import Data_Loader
-from model import NGAE_BFS
+from model import NGAE_MPNN_BFS
 from model_train import Model_Trainer
 
 ### seed setting
@@ -23,6 +23,6 @@ Train with 20 node
 train_graph_list_dict=Data_Loader.load_from_pickle(file_name="train_graph_20_list_dict")
 val_graph_list_dict=Data_Loader.load_from_pickle(file_name="val_graph_20_list_dict")
 
-model=NGAE_BFS(x_dim=1,e_dim=1,latent_dim=32,aggr='max')
+model=NGAE_MPNN_BFS(x_dim=1,e_dim=1,latent_dim=32,aggr='max')
 trained_model=Model_Trainer.train(model=model,train_graph_list_dict=train_graph_list_dict,val_graph_list_dict=val_graph_list_dict,latent_dim=32,epochs=30)
-Data_Loader.save_model_parameter(model=trained_model,model_name="NGAE_BFS_20")
+Data_Loader.save_model_parameter(model=trained_model,model_name="NGAE_MPNN_BFS_20")

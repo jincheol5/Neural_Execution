@@ -4,7 +4,7 @@ import copy
 from tqdm import tqdm
 import numpy as np
 from utils import Metrics,Graph_Algorithm
-from model import NGAE_BFS
+from model import NGAE_MPNN_BFS
 import torch
 from torch_geometric.utils.convert import from_networkx
 
@@ -248,11 +248,11 @@ class Model_Trainer:
             case 'gat':
                 pass
             case 'mpnn_max':
-                model=NGAE_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max")
+                model=NGAE_MPNN_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max")
             case 'mpnn_min':
-                model=NGAE_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max")
+                model=NGAE_MPNN_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max")
             case 'mpnn_avg':
-                model=NGAE_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max")
+                model=NGAE_MPNN_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max")
         load_path=os.path.join(os.getcwd(),"inference",model_file_name+".pt")
         model.load_state_dict(torch.load(load_path))
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')

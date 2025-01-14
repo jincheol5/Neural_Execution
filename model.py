@@ -78,13 +78,13 @@ class BFS_Terminator(torch.nn.Module):
 
 """
 <<Model>>
-1. NGAE_BFS
+1. NGAE_MPNN_BFS
     output:
         h: [N,latent_dim]
         y: [N,1], logit
         tau: [1,1], logit
 """
-class NGAE_BFS(torch.nn.Module):
+class NGAE_MPNN_BFS(torch.nn.Module):
     def __init__(self,x_dim,e_dim,latent_dim,aggr='max'):
         super().__init__()
         self.encoder=BFS_Encoder(x_dim=x_dim,latent_dim=latent_dim)
