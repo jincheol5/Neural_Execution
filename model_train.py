@@ -133,6 +133,7 @@ class Model_Trainer:
             if patience>=10:
                 print(f"Early stop, best last p acc: {best_last_y_acc}")
                 break
+        return model
 
     @staticmethod
     def validate(model,graph_list_dict,latent_dim=32):
