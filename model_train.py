@@ -123,7 +123,7 @@ class Model_Trainer:
                             Q=Q_next
             print(f"{epoch+1} epoch training is finished.")
             ### check early stop
-            step_y_acc,last_y_acc=Model_Trainer.validate(model=model,val_graph_list_dict=val_graph_list_dict,latent_dim=latent_dim)
+            step_y_acc,last_y_acc=Model_Trainer.validate(model=model,graph_list_dict=val_graph_list_dict,latent_dim=latent_dim)
             if best_last_y_acc<last_y_acc:
                 best_last_y_acc=last_y_acc
                 patience=0
