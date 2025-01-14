@@ -1,57 +1,34 @@
 import os
-import networkx as nx
-import pickle
 import random
 import copy
+import pickle
+import networkx as nx
 import pandas as pd
 import numpy as np
 import torch
-
+from torch.nn import BCEWithLogitsLoss
+import torch.nn.functional as F
+from torch_geometric.utils.convert import from_networkx
 
 class Data_Generator:
     @staticmethod
     def set_self_loop(graph): 
-        self_loof_edge_list = [(node, node) for node in graph.nodes()] 
-        graph.add_edges_from(self_loof_edge_list) 
-        return graph
+        self_loof_edge_list=[(node, node) for node in graph.nodes()] 
+        graph.add_edges_from(self_loof_edge_list)
 
     @staticmethod
-    def set_edge_weight(graph):
-        for src,tar in list(graph.edges()): 
-            graph[src][tar]['w'] = random.uniform(0.2, 1) 
-        return graph
+    def set_edge_feature(graph):
+        for edge in graph.edges():
+            graph.edges[edge]['w']=random.uniform(0.2,1.0)
 
     @staticmethod
     def set_graph(graph):
-        # set selp loop, edge weight, node feature, predecessor
-        graph=Data_Generator.set_self_loop(graph=graph)
-        graph=Data_Generator.set_edge_weight(graph=graph)
-        for node_idx in graph.nodes():
-            graph.nodes[node_idx]['x']=0.0
-            graph.nodes[node_idx]['p']=node_idx
-        return graph
+        Data_Generator.set_self_loop(graph=graph)
+        Data_Generator.set_edge_feature(graph=graph)
 
     @staticmethod
-    def convert_grid_2d_to_int_id(graph):
-        # 그래프의 행과 열 크기를 가져옵니다.
-        m = max(x for x, y in graph.nodes()) + 1
-        n = max(y for x, y in graph.nodes()) + 1
-
-        # 노드 좌표를 정수형 ID로 매핑하는 딕셔너리 생성
-        node_mapping = {(i, j): i * n + j for i in range(m) for j in range(n)}
-
-        # 새로운 그래프에 정수형 노드 ID와 엣지를 추가합니다.
-        new_graph = nx.Graph()
-        for (node1, node2) in graph.edges():
-            # 좌표형 ID를 정수형 ID로 변환하여 엣지를 추가
-            new_graph.add_edge(node_mapping[node1], node_mapping[node2])
-
-        return new_graph
-
-    @staticmethod
-    def generate_graph_list_dict(graph_num,node_num,edge_probability=0.5):
+    def generate_graph_list_dict(graph_num,node_num,edge_probability=0.1):
         ladder_graph_list=[]
-        grid_2d_graph_list=[]
         tree_graph_list=[]
         Erdos_Renyi_graph_list=[]
         Barabasi_Albert_graph_list=[]
@@ -59,223 +36,198 @@ class Data_Generator:
 
         # generate
         for _ in range(graph_num):
-
             # generate ladder graph
-            ladder_graph=nx.ladder_graph(n=node_num)
-            ladder_graph_list.append(ladder_graph)
-
-            # generate grid 2D graph
-            grid_2d_graph=nx.grid_2d_graph(m=node_num,n=node_num) # node id=(x,y), edge=((0,0),(0,1)) 형태를 가짐 
-            grid_2d_graph=Data_Generator.convert_grid_2d_to_int_id(grid_2d_graph)
-            grid_2d_graph_list.append(grid_2d_graph)
+            ladder_graph=nx.ladder_graph(n=int(node_num/2))
+            directed_ladder_graph=nx.DiGraph()
+            directed_ladder_graph.add_nodes_from(ladder_graph.nodes())
+            for u,v in ladder_graph.edges():
+                if np.random.rand()<0.5:
+                    directed_ladder_graph.add_edge(u,v)
+                else:
+                    directed_ladder_graph.add_edge(v,u)
+            ladder_graph_list.append(directed_ladder_graph)
 
             # generate tree graph
             tree_graph=nx.random_tree(n=node_num)
-            tree_graph_list.append(tree_graph)
+            directed_tree_graph=nx.DiGraph()
+            directed_tree_graph.add_nodes_from(tree_graph.nodes())
+            for parent,child in nx.bfs_edges(tree_graph,source=0):
+                directed_tree_graph.add_edge(parent,child)
+            tree_graph_list.append(directed_tree_graph)
 
             # generate Erdos-Renyi graph
-            Erdos_Renyi_graph=nx.erdos_renyi_graph(node_num,edge_probability)
+            Erdos_Renyi_graph=nx.erdos_renyi_graph(node_num,edge_probability,directed=True)
             Erdos_Renyi_graph_list.append(Erdos_Renyi_graph)
 
             # generate Barabasi-Albert graph
-            Barabasi_Albert_graph = nx.barabasi_albert_graph(n=node_num, m=2)
-            Barabasi_Albert_graph_list.append(Barabasi_Albert_graph)
+            Barabasi_Albert_graph=nx.barabasi_albert_graph(n=node_num, m=2)
+            directed_Barabasi_Albert_graph=nx.DiGraph()
+            directed_Barabasi_Albert_graph.add_nodes_from(Barabasi_Albert_graph.nodes())
+            for u,v in Barabasi_Albert_graph.edges():
+                if np.random.rand()<0.5:
+                    directed_Barabasi_Albert_graph.add_edge(u,v)
+                else:
+                    directed_Barabasi_Albert_graph.add_edge(v,u)
+            Barabasi_Albert_graph_list.append(directed_Barabasi_Albert_graph)
 
             # generate 4 community graph
             sub_node_num=node_num//4
-            sub_graphs=[nx.erdos_renyi_graph(sub_node_num,p=0.3) for _ in range(4)]
+            sub_graphs=[nx.erdos_renyi_graph(sub_node_num,p=0.5,directed=True) for _ in range(4)]
             community_graph=sub_graphs[0]
             for i in range(1, len(sub_graphs)):
                 community_graph=nx.disjoint_union(community_graph,sub_graphs[i])
 
                 # 기존 그래프의 노드와 새로 추가된 그래프의 노드 범위 구하기
-                G_nodes = list(range(len(community_graph) - len(sub_graphs[i]), len(community_graph) - len(sub_graphs[i]) + len(sub_graphs[i])))
-                H_nodes = list(range(len(community_graph) - len(sub_graphs[i]), len(community_graph)))
+                G_nodes=list(range(len(community_graph)-len(sub_graphs[i]),len(community_graph)-len(sub_graphs[i])+len(sub_graphs[i])))
+                H_nodes=list(range(len(community_graph)-len(sub_graphs[i]),len(community_graph)))
 
                 # 0.01의 확률로 두 커뮤니티 사이에 에지 생성
-                size = len(G_nodes) * len(H_nodes)
-                number_of_edges = np.sum(np.random.uniform(size=size) <= 0.01)
-                g_nodes_to_connect = np.random.choice(G_nodes, replace=True, size=number_of_edges)
-                h_nodes_to_connect = np.random.choice(H_nodes, replace=True, size=number_of_edges)
-                edges = list(zip(g_nodes_to_connect, h_nodes_to_connect))
+                size=len(G_nodes)*len(H_nodes)
+                number_of_edges=np.sum(np.random.uniform(size=size)<=0.01)
+                g_nodes_to_connect=np.random.choice(G_nodes,replace=True, size=number_of_edges)
+                h_nodes_to_connect=np.random.choice(H_nodes,replace=True, size=number_of_edges)
+                edges=[(g,h) if np.random.rand()<0.5 else (h,g) for g,h in zip(g_nodes_to_connect,h_nodes_to_connect)] # 방향성 고려
 
                 # 에지 추가
                 community_graph.add_edges_from(edges)
             community_graph_list.append(community_graph)
 
-        # set selp loop, edge weight, node feature
-        for graph_list in [ladder_graph_list,grid_2d_graph_list,tree_graph_list,Erdos_Renyi_graph_list,Barabasi_Albert_graph_list,community_graph_list]:
+        # set selp loop, edge weight, edge time list
+        for graph_list in [ladder_graph_list,tree_graph_list,Erdos_Renyi_graph_list,Barabasi_Albert_graph_list,community_graph_list]:
             for graph in graph_list:
-                graph=Data_Generator.set_graph(graph=graph)
-        
+                Data_Generator.set_graph(graph=graph)
+
         graph_list_dict={}
         graph_list_dict['ladder']=ladder_graph_list
-        graph_list_dict['grid']=grid_2d_graph_list
         graph_list_dict['tree']=tree_graph_list
         graph_list_dict['erdos_renyi']=Erdos_Renyi_graph_list
         graph_list_dict['barabasi_albert']=Barabasi_Albert_graph_list
         graph_list_dict['community']=community_graph_list
 
         return graph_list_dict
-    
-    @staticmethod
-    def generate_4_community_graph_list(graph_num,node_num):
-        graph_list=[]
-
-        # generate
-        for _ in range(graph_num):
-        # generate 4 community graph
-            sub_node_num=node_num//4
-            sub_graphs=[nx.erdos_renyi_graph(sub_node_num,p=0.3) for _ in range(4)]
-            community_graph=sub_graphs[0]
-            for i in range(1, len(sub_graphs)):
-                community_graph=nx.disjoint_union(community_graph,sub_graphs[i])
-
-                # 기존 그래프의 노드와 새로 추가된 그래프의 노드 범위 구하기
-                G_nodes = list(range(len(community_graph) - len(sub_graphs[i]), len(community_graph) - len(sub_graphs[i]) + len(sub_graphs[i])))
-                H_nodes = list(range(len(community_graph) - len(sub_graphs[i]), len(community_graph)))
-
-                # 0.01의 확률로 두 커뮤니티 사이에 에지 생성
-                size = len(G_nodes) * len(H_nodes)
-                number_of_edges = np.sum(np.random.uniform(size=size) <= 0.01)
-                g_nodes_to_connect = np.random.choice(G_nodes, replace=True, size=number_of_edges)
-                h_nodes_to_connect = np.random.choice(H_nodes, replace=True, size=number_of_edges)
-                edges = list(zip(g_nodes_to_connect, h_nodes_to_connect))
-
-                # 에지 추가
-                community_graph.add_edges_from(edges)
-            graph_list.append(community_graph)
-
-        # set selp loop, edge weight, node feature
-        for train_graph in graph_list:
-            train_graph=Data_Generator.set_graph(graph=train_graph)
-        return graph_list
-
 
 class Data_Loader:
-    pickle_path=os.path.join(os.getcwd(),'data')
+    train_dataset_path=os.path.join('..','data','ngae')
     dataset_path=os.path.join('..','data')
 
     @staticmethod
-    def save_pickle(data,file_name):
+    def save_to_pickle(data,file_name):
         file_name=file_name+".pkl"
-        with open(os.path.join(Data_Loader.pickle_path,file_name),'wb') as f:
+        with open(os.path.join(Data_Loader.train_dataset_path,file_name),'wb') as f:
             pickle.dump(data,f)
-        print("Save "+file_name)
+        print(f"Save {file_name}")
 
     @staticmethod
-    def load_pickle(file_name):
+    def load_from_pickle(file_name):
         file_name=file_name+".pkl"
-        with open(os.path.join(Data_Loader.pickle_path,file_name),'rb') as f:
+        with open(os.path.join(Data_Loader.train_dataset_path,file_name),'rb') as f:
             data=pickle.load(f)
-        print("Load "+file_name)
+        print(f"Load {file_name}")
         return data
 
     @staticmethod
-    def load_graph(dataset_name):
-        load_path=os.path.join(Data_Loader.dataset_path,dataset_name)
-        x_df=pd.read_csv(os.path.join(load_path,"x.csv"))
-        edge_index_df=pd.read_csv(os.path.join(load_path,"edge_index.csv"))
+    def save_model_parameter(model,model_name="model_parameter"):
+        file_name=model_name+".pt"
+        save_path=os.path.join(os.getcwd(),"inference",file_name)
+        torch.save(model.state_dict(),save_path)
+        print(f"Save model parameter: {model_name}")
 
-        node_num=x_df.shape[0]
-
-        graph=nx.Graph()
-        graph.add_nodes_from(range(node_num))
-        graph.add_edges_from(zip(edge_index_df['source'], edge_index_df['target']))
-
-        return graph
-
-
-class Data_Processor:
-    
+class Graph_Algorithm:
     @staticmethod
-    def compute_bfs_step(graph,source_id=0,init=False):
+    def compute_bfs_step(graph,source_id=0,init=False,Q=None):
         N=graph.number_of_nodes()
-        x_t=torch.zeros((N,),dtype=torch.float32)
-        for idx in range(N):
-            x_t[idx]=graph.nodes[idx]['x']
-
+        Q_next=[]
         if init:
-            for idx in range(N):
-                graph.nodes[idx]['x']=0.0
-                x_t[idx]=0.0
-            graph.nodes[source_id]['x']=1.0
-            x_t[source_id]=1.0
-
-            return graph,x_t
+            graph.nodes[source_id]['r']=1.0
+            Q_next.append(source_id)
         else:
-            graph_t=copy.deepcopy(graph) # 순회 내에서 업데이트 결과가 이후 결과에 영향을 미치지 않도록 복사 -> edge 순서 관계없이 각 단계 결과값 예측 가능
-            for idx in range(N):
-                if graph.nodes[idx]['x'] == 1.0:
-                    for neighbor in graph.neighbors(idx):
-                        if graph.nodes[neighbor]['x'] == 0.0:
-                            graph_t.nodes[neighbor]['x'] = 1.0
-                            x_t[neighbor]=1.0
-
-            return graph_t,x_t
+            for node in Q:
+                for _,neighbor in graph.out_edges(node): # neighbor=(src,tar)
+                    if graph.nodes[neighbor]['r']==0.0:
+                        graph.nodes[neighbor]['r']=1.0
+                        Q_next.append(neighbor)
+        return Q_next
 
     @staticmethod
-    def compute_bellman_ford_step(graph,source_id=0,init=False):
-        N=graph.number_of_nodes()
-        x_t=torch.zeros((N,),dtype=torch.float32)
-        p_t=torch.zeros((N,),dtype=torch.int)
-        for idx in range(N):
-            x_t[idx]=graph.nodes[idx]['x']
-            p_t[idx]=graph.nodes[idx]['p']
-
-        if init:
-            # compute longest distance
-            copy_graph=copy.deepcopy(graph)
-            _, distance_dic=nx.bellman_ford_predecessor_and_distance(G=copy_graph, source=source_id, weight='w')
-            longest_shortest_path_distance=max(distance_dic.values())
-            longest_shortest_path_distance+=1
-
-            # initialize 
-            for idx in range(N):
-                graph.nodes[idx]['x']=longest_shortest_path_distance
-                x_t[idx]=longest_shortest_path_distance
-                graph.nodes[idx]['p']=idx
-                p_t[idx]=graph.nodes[idx]['p']=idx
-            graph.nodes[source_id]['x']=0.0
-            x_t[source_id]=0.0
-
-            return graph,p_t,x_t
-        else:
-            graph_t=copy.deepcopy(graph) # edge 순서에 영향 받지 않기 위해 복사 -> edge 순서 상관없이 각 단계 결과값 예측 가능
-            for src,tar in list(graph.edges()): # edge=(src,tar)
-                if graph.nodes[src]['x']+graph.edges[(src, tar)]['w']<graph.nodes[tar]['x']:
-                    graph_t.nodes[tar]['x']=graph.nodes[src]['x']+graph.edges[(src, tar)]['w']
-                    x_t[tar]=graph.nodes[src]['x']+graph.edges[(src, tar)]['w']
-                    graph_t.nodes[tar]['p']=src
-                    p_t[tar]=src
-
-            return graph_t,p_t,x_t
+    def compute_reachability(graph,source_id=0):
+        Q=Graph_Algorithm.compute_bfs_step(graph=graph,source_id=source_id,init=True)
+        while Q:
+            Q_next=Graph_Algorithm.compute_bfs_step(graph=graph,source_id=source_id,init=False,Q=Q)
+            Q=Q_next
+        data=from_networkx(G=graph,group_node_attrs=['r'])
+        r=data.x # [N,1]
+        return r 
 
     @staticmethod
-    def compute_reachability(graph,source_id):
+    def compute_reachability_has_path(graph,source_id):
         nodes=list(graph.nodes())
-        result_tensor=torch.zeros((len(nodes),), dtype=torch.float32) # result_tensor=(N,1)
-
+        result_tensor=torch.zeros((len(nodes),1),dtype=torch.float32) # result_tensor=(N,1)
         for tar in nodes:
             if nx.has_path(graph,source=source_id,target=tar):
-                result_tensor[tar]=1.0
-
+                result_tensor[tar][0]=1.0
         return result_tensor
-    
+
+class Metrics:
+    @staticmethod
+    def compute_BFS_from_logit(logit):
+        return F.sigmoid(logit)
 
     @staticmethod
-    def compute_shortest_path_and_predecessor(graph,source_id):
-        nodes=list(graph.nodes())
-        predecessor_tensor=torch.zeros((len(nodes),), dtype=torch.int) # predecessor_tensor=(N,1)
-        distance_tensor=torch.zeros((len(nodes),), dtype=torch.float32) # distance_tensor=(N,1)
+    def compute_tau_from_logit(logit):
+        return F.sigmoid(logit)
 
-        predecessor_dic, distance_dic = nx.bellman_ford_predecessor_and_distance(G=graph, source=source_id, weight='w') # 연결되지 않은 노드=key도 없음, source 노드=key는 있지만 value=[]
-        predecessor_dic[source_id]=[source_id]
+    @staticmethod
+    def compute_BFS_accuracy(predict,label):
+        """
+        각 source 마다 수행
+        predict: [N,1], logit
+        label: [N,1]
+        """
+        N=predict.size(0)
+        predict_class=(predict>=0.5).float()
+        correct=(predict_class==label).sum().item()
+        acc=correct/N
+        return acc
 
-        for tar in nodes:
-            if tar in predecessor_dic:
-                predecessor_tensor[tar]=predecessor_dic[tar][0]
-                distance_tensor[tar]=distance_dic[tar]
-            else:
-                predecessor_tensor[tar]=tar
-        return predecessor_tensor,distance_tensor
+    @staticmethod
+    def compute_tau_accuracy(predict,label):
+        """
+        모든 source 에 대해 한번 수행
+        tau: 1=continue, 0=terminate
+        tau_predict: [N,1], logit
+        tau_label: [N,1]
+        """
+        N=predict.size(0)
+        tau_predict=(predict>=0.5).float()
+        correct=(tau_predict==label).sum().item()
+        acc=correct/N
+        return acc
+
+    @staticmethod
+    def compute_tau_label(Q):
+        if not Q:
+            return torch.tensor([[0.0]])
+        else:
+            return torch.tensor([[1.0]])
+    
+    @staticmethod
+    def compute_BFS_loss(y,y_label):
+        """
+        criterion: BCEWithLogitsLoss()
+        y: [N,1], logit
+        y_label: [N,1]
+        """
+        criterion=BCEWithLogitsLoss()
+        loss=criterion(y,y_label)
+        return loss
+
+    @staticmethod
+    def compute_tau_loss(tau,tau_label):
+        """
+        criterion: BCEWithLogitsLoss()
+        tau: [1,1], logit
+        tau_label: [1,1]
+        """
+        criterion=BCEWithLogitsLoss()
+        loss=criterion(tau,tau_label)
+        return loss
