@@ -246,7 +246,7 @@ class Model_Trainer:
             case 'mpnn_max':
                 model=NGAE_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max")
             case 'mpnn_min':
-                model=NGAE_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max"))
+                model=NGAE_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max")
             case 'mpnn_avg':
                 model=NGAE_BFS(x_dim=1,e_dim=1,latent_dim=latent_dim,aggr="max")
         load_path=os.path.join(os.getcwd(),"inference",model_file_name+".pt")
