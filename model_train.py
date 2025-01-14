@@ -191,6 +191,7 @@ class Model_Trainer:
                             h=h.to(device)
                             edge_index=edge_index.to(device)
                             e=e.to(device)
+                            pre_y=pre_y.to(device)
 
                             ### get step label
                             Q_next=Graph_Algorithm.compute_bfs_step(graph=graph,source_id=source_id,Q=Q) 
@@ -303,6 +304,7 @@ class Model_Trainer:
                             h=h.to(device)
                             edge_index=edge_index.to(device)
                             e=e.to(device)
+                            pre_y=pre_y.to(device)
 
                             ### get step label
                             Q_next=Graph_Algorithm.compute_bfs_step(graph=graph,source_id=source_id,Q=Q) 
