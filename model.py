@@ -85,10 +85,10 @@ class BFS_Terminator(torch.nn.Module):
         tau: [1,1], logit
 """
 class NGAE_BFS(torch.nn.Module):
-    def __init__(self,x_dim,e_dim,latent_dim):
+    def __init__(self,x_dim,e_dim,latent_dim,aggr='max'):
         super().__init__()
         self.encoder=BFS_Encoder(x_dim=x_dim,latent_dim=latent_dim)
-        self.processor=MPNN_Processor(latent_dim=latent_dim,e_dim=e_dim)
+        self.processor=MPNN_Processor(latent_dim=latent_dim,e_dim=e_dim,aggr='max')
         self.decoder=BFS_Decoder(latent_dim=latent_dim)
         self.terminator=BFS_Terminator(latent_dim=latent_dim)
 
