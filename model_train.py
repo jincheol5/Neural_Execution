@@ -204,6 +204,8 @@ class Model_Trainer:
                             y=output['y'] # [N,1], logit
                             h=output['h'].detach()
                             tau=output['tau'] # [1,1], logit
+                            y=Metrics.compute_BFS_from_logit(logit=y)
+                            tau=Metrics.compute_tau_from_logit(logit=tau)
 
                             ### compute step acc
                             step_y_acc.append(Metrics.compute_BFS_accuracy(predict=y,label=step_y_label))
@@ -314,6 +316,8 @@ class Model_Trainer:
                             y=output['y'] # [N,1], logit
                             h=output['h'].detach()
                             tau=output['tau'] # [1,1], logit
+                            y=Metrics.compute_BFS_from_logit(logit=y)
+                            tau=Metrics.compute_tau_from_logit(logit=tau)
 
                             ### compute step acc
                             step_y_acc.append(Metrics.compute_BFS_accuracy(predict=y,label=step_y_label))
