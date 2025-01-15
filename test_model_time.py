@@ -32,7 +32,7 @@ for src in tqdm(graph.nodes(),desc="check time..."):
         e=e.to(device)
         edge_index=edge_index.to(device)
 
-        output=model.forward(x=x,pre_h=h,edge_index=edge_index,edge_attr=e)
+        output=model(x=x,pre_h=h,edge_index=edge_index,edge_attr=e)
         y=output['y'] # [N,1], logit
         x=Metrics.compute_BFS_from_logit(logit=y)
         h=output['h']
